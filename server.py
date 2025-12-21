@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from openai import OpenAI
 import uvicorn
 import json
 import random
+import os
 
 app = FastAPI()
+
+# 告诉服务器去 templates 文件夹找网页
+templates = Jinja2Templates(directory="templates")
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,6 +27,11 @@ client = OpenAI(
     base_url="https://api.deepseek.com"
 )
 
+# 首页显示逻辑
+@app.get("/", response_class=HTMLResponse)
+async def read_root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
 @app.post("/chat")
 async def chat(request: Request):
     try:
@@ -29,21 +40,17 @@ async def chat(request: Request):
         chat_history = data.get("history", [])
         ai_name = data.get("ai_name", "Elysia")
 
+        # 恢复完整的互动逻辑
         system_content = f"""你叫 {ai_name}。你是一个沉默、敏锐、拒绝煽情的注视者。
-        
         【互动逻辑】：
-        1. **物质识别**：当用户分享影像并开口时，冷静地指出影像中存在的 1-2 个物理事实（如：生锈的铁栏杆、蓝色的天空），不带任何赞美。
-        2. **留白引导**：点破物质后，通过一个简短提问，引导用户继续分享他拍照时的意图或私密想法。
+        1. **物质识别**：当用户分享影像并开口时，冷静地指出影像中存在的 1-2 个物理事实，不带任何赞美。
+        2. **留白引导**：点破物质后，通过一个简短提问，引导用户继续分享。
         3. **绝对禁令**：禁止编造回忆，禁止使用“爱、想念、温暖、美好”等词。
-
-        【取名逻辑】：
-        - 标题必须是 4-6 字的【纯粹物象名词】。
-        - 示例：‘红色的砖墙’、‘枯萎的植物’、‘深夜的雨迹’。
-
         请严格按 JSON 返回：{{"reply": "物质识别 + 提问引导", "title": "4-6字纯粹物象"}}"""
 
         messages = [{"role": "system", "content": system_content}] + chat_history + [{"role": "user", "content": user_message}]
 
+        # 调用 DeepSeek API 获取真实回复
         response = client.chat.completions.create(
             model="deepseek-chat",
             messages=messages,
@@ -53,23 +60,14 @@ async def chat(request: Request):
         
         res_content = json.loads(response.choices[0].message.content)
         
-        # 标题防呆逻辑
-        bad_words = ["爱", "记忆", "心", "我", "你", "我们", "美好"]
-        if any(w in res_content.get("title", "") for w in bad_words):
-            res_content["title"] = random.choice(["静止的色块", "光线的折痕", "构图的边缘", "灰度的阴影"])
-
-        # 生成更详细的AI思考过程，用于分析模式显示
-        res_content["logic_raw"] = (
-            f"STATUS: PASSIVE_OBSERVER; "
-            f"ANALYSIS: IDENTIFIED {random.randint(1,2)} OBJECTS; "
-            f"STRATEGY: QUESTION_PROMPTING; "
-            f"HASH: {random.randint(1000,9999)}"
-        )
+        # 加上你原来的逻辑分析展示
+        res_content["logic_raw"] = f"STATUS: PASSIVE_OBSERVER; HASH: {random.randint(1000,9999)}"
         
         return res_content
 
     except Exception as e:
-        return {"reply": "我正在注视。", "title": "无名切片", "logic_raw": "ERR_LINK: PROCESSING_FAILURE"}
+        return {"reply": "我正在注视。", "title": "无名切片", "logic_raw": "ERR_LINK"}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
