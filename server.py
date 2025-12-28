@@ -3,6 +3,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles  # 1. 导入 StaticFiles
 from openai import OpenAI
 import uvicorn
 import json
@@ -10,6 +11,22 @@ import random
 import os
 
 app = FastAPI()
+
+# 2. 挂载静态文件目录
+# 这一步非常重要：它告诉 FastAPI 将 /templates 文件夹下的内容暴露给浏览器访问
+app.mount("/templates", StaticFiles(directory="templates"), name="templates")
+
+# 告诉服务器去 templates 文件夹找网页模板
+templates = Jinja2Templates(directory="templates")
+
+# ... (中间的 CORS 和 OpenAI 配置保持不变) ...
+
+# 首页显示逻辑
+@app.get("/", response_class=HTMLResponse)
+async def read_root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+# ... (后续代码保持不变) ...
 
 # 告诉服务器去 templates 文件夹找网页
 templates = Jinja2Templates(directory="templates")
