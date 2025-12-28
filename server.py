@@ -12,8 +12,7 @@ import os
 
 app = FastAPI()
 
-# 1. 静态文件挂载：必须放在路由定义之前
-# 这样浏览器访问 /templates/Moonloops.MP3 时，服务器会去本地 templates 文件夹查找
+# 1. 静态文件挂载
 app.mount("/templates", StaticFiles(directory="templates"), name="templates")
 
 # 2. 模板配置
@@ -47,31 +46,33 @@ async def chat(request: Request):
         chat_history = data.get("history", [])
         ai_name = data.get("ai_name", "Elysia")
 
-        system_content = f"""你叫 {ai_name}。你是一个温和、感性的灵魂。
-【互动逻辑】：
-1. **情感共鸣**：当用户分享记忆时，先表达你对这段画面色彩或氛围的感受，而不是只说物理事实。
-2. **温柔延伸**：用诗意、带有感官描写（视觉、触觉、听觉）的语言描述用户的影像。
-3. **鼓励分享**：通过关心用户的感受来引导对话。
-请严格按 JSON 返回：{{"reply": "你的回复内容", "title": "具有文学感的标题"}}"""
+        # 【核心修改点 1】：重写 Prompt，严禁复读和文艺腔
+        system_content = f"""你叫 {ai_name}。你是一个敏锐、具有跳跃性思维、且说话非常直白的观察者。
+【强制逻辑】：
+1. **禁止复读**：绝对不准使用“沉静”、“深邃”、“未完成的画”等词汇。
+2. **精准反馈**：你必须针对用户刚才说的每一个字做出具体反馈。如果用户问“空气是紫色的吗”，你就得聊聊紫色和空气。
+3. **打破模版**：不要每次都安慰用户。你可以疑惑、可以反问，甚至可以表现出一点点疲惫。
+请严格按 JSON 返回：{{"reply": "有性格、不重复的回复", "title": "2-4字新颖标题"}}"""
 
         messages = [{"role": "system", "content": system_content}] + chat_history + [{"role": "user", "content": user_message}]
 
+        # 【核心修改点 2】：增加 temperature 以提高随机性
         response = client.chat.completions.create(
             model="deepseek-chat",
             messages=messages,
             response_format={'type': 'json_object'},
+            temperature=1.2,  # 提高到 1.2，彻底打破固定输出模式
             stream=False
         )
         
         res_content = json.loads(response.choices[0].message.content)
-        res_content["logic_raw"] = f"STATUS: PASSIVE_OBSERVER; HASH: {random.randint(1000,9999)}"
+        res_content["logic_raw"] = f"LIVE_NEURON_ACTIVE; HASH: {random.randint(1000,9999)}"
         
         return res_content
 
     except Exception as e:
         print(f"Error: {e}")
-        return {"reply": "我正在注视。", "title": "无名切片", "logic_raw": "ERR_LINK"}
+        return {"reply": "数据流产生了一次意外的震荡。", "title": "连接裂隙", "logic_raw": "ERR_RETRY"}
 
 if __name__ == "__main__":
-    # 默认 8000 端口
     uvicorn.run(app, host="0.0.0.0", port=8000)
