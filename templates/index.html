@@ -216,33 +216,53 @@
         });
 
         async function handleSend() {
-            const input = document.getElementById('user-input');
-            const text = input.value.trim();
-            if(!text) return;
-            
-            const container = document.getElementById('dialogue-container');
-            container.innerHTML += `<div class="user-msg">${text}</div>`;
-            input.value = '';
-            
-            const loaderArea = document.getElementById('loading-area');
-            loaderArea.innerHTML = `<div class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
-            container.scrollTop = container.scrollHeight;
+    const input = document.getElementById('user-input');
+    const text = input.value.trim();
+    if(!text) return;
+    
+    const container = document.getElementById('dialogue-container');
+    container.innerHTML += `<div class="user-msg">${text}</div>`;
+    input.value = '';
+    
+    const loaderArea = document.getElementById('loading-area');
+    loaderArea.innerHTML = `<div class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+    container.scrollTop = container.scrollHeight;
 
-            setTimeout(() => {
-                loaderArea.innerHTML = '';
-                const reply = `我似乎在那段记忆里看到了你描述的细节... 那种感觉就像是 ${text.slice(0,5)}... 在我的数据中也产生了共鸣。`;
-                lastAiTitle = "共鸣切片 #" + (memoryCount + 1);
-                
-                let aiMsgHtml = `<div class="ai-msg">${aiName}: ${reply}</div>`;
-                if(currentMode === 'analysis') {
-                    aiMsgHtml += `<div class="analysis-note">LOGIC_ERROR: 发现非线性记忆重叠 / 幻觉指数: 74%</div>`;
-                }
-                
-                container.innerHTML += aiMsgHtml;
-                currentHistory.push({role: "user", content: text}, {role: "assistant", content: reply});
-                container.scrollTop = container.scrollHeight;
-            }, 1000);
+    try {
+        // --- 关键修改：从这里开始真正请求后端服务器 ---
+        const response = await fetch('/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message: text,
+                history: currentHistory,
+                ai_name: aiName
+            })
+        });
+        
+        const data = await response.json();
+        loaderArea.innerHTML = '';
+        
+        const reply = data.reply;
+        lastAiTitle = data.title;
+        
+        let aiMsgHtml = `<div class="ai-msg">${aiName}: ${reply}</div>`;
+        
+        // 增加逻辑分析展示（如果开启了分析模式）
+        if(currentMode === 'analysis' || data.logic_raw) {
+            aiMsgHtml += `<div class="analysis-note">${data.logic_raw || 'DATA_STREAM_ACTIVE'}</div>`;
         }
+        
+        container.innerHTML += aiMsgHtml;
+        currentHistory.push({role: "user", content: text}, {role: "assistant", content: reply});
+        container.scrollTop = container.scrollHeight;
+
+    } catch (err) {
+        console.error("通信失败:", err);
+        loaderArea.innerHTML = '';
+        container.innerHTML += `<div class="ai-msg text-red-400">系统连接中断：请确保后端 server.py 正在运行。</div>`;
+    }
+}
 
         function finalizeMemory() {
             if(!currentImg) return;
