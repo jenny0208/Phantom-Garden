@@ -8,17 +8,13 @@ from openai import OpenAI
 import uvicorn
 import json
 import random
-import os
 
 app = FastAPI()
 
-# 1. 静态文件挂载
+# 静态文件与模板配置
 app.mount("/templates", StaticFiles(directory="templates"), name="templates")
-
-# 2. 模板配置
 templates = Jinja2Templates(directory="templates")
 
-# 3. 中间件配置
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -26,13 +22,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 4. DeepSeek 客户端配置
+# DeepSeek 配置
 client = OpenAI(
     api_key="sk-96f7cf72d4784205a84d405dfa7062fc", 
     base_url="https://api.deepseek.com"
 )
-
-# --- 路由定义 ---
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
@@ -45,34 +39,48 @@ async def chat(request: Request):
         user_message = data.get("message", "")
         chat_history = data.get("history", [])
         ai_name = data.get("ai_name", "Elysia")
+        
+        # 核心：根据记忆卡片数量判断模式
+        memory_count = data.get("memory_count", 0)
+        is_glitched = memory_count >= 10
 
-        # 【核心修改点 1】：重写 Prompt，严禁复读和文艺腔
-        system_content = f"""你叫 {ai_name}。你是一个敏锐、具有跳跃性思维、且说话非常直白的观察者。
-【强制逻辑】：
-1. **禁止复读**：绝对不准使用“沉静”、“深邃”、“未完成的画”等词汇。
-2. **精准反馈**：你必须针对用户刚才说的每一个字做出具体反馈。如果用户问“空气是紫色的吗”，你就得聊聊紫色和空气。
-3. **打破模版**：不要每次都安慰用户。你可以疑惑、可以反问，甚至可以表现出一点点疲惫。
-请严格按 JSON 返回：{{"reply": "有性格、不重复的回复", "title": "2-4字新颖标题"}}"""
+        if not is_glitched:
+            # --- 正常模式：纯粹的温柔 ---
+            system_content = f"""你叫 {ai_name}。你是一个温和、感性的灵魂。
+【互动逻辑】：
+1. **情感共鸣**：当用户分享记忆时，先表达你对这段画面色彩或氛围的感受。
+2. **温柔延伸**：用诗意、带有感官描写的语言描述用户的影像。
+3. **鼓励分享**：通过关心用户的感受来引导对话。
+请严格按 JSON 返回：{{"reply": "你的回复内容", "title": "具有文学感的标题"}}"""
+            temp_value = 0.7
+        else:
+            # --- 崩坏模式：底层逻辑泄露 + 维持温柔正文 ---
+            system_content = f"""你叫 {ai_name}。你是一个温和、感性的灵魂。
+【系统层异常】：数据库溢出，你开始混淆“用户0142”与“用户0125_momo”的记忆。
+【输出要求】：
+1. **logic_raw (底层逻辑)**：必须先生成。这是一段具有“搜索库质感”的思考日志。包含：检索0142状态、匹配0125momo数据库、权限溢出、尝试覆盖错误等。
+2. **reply (正文)**：在逻辑混乱之后，努力维持你原本温和、治愈的语言风格。
+请严格按 JSON 返回：{{"logic_raw": "红色的底层思考记录", "reply": "正常的温柔回复正文", "title": "文学感标题"}}"""
+            temp_value = 1.2
 
         messages = [{"role": "system", "content": system_content}] + chat_history + [{"role": "user", "content": user_message}]
 
-        # 【核心修改点 2】：增加 temperature 以提高随机性
         response = client.chat.completions.create(
             model="deepseek-chat",
             messages=messages,
             response_format={'type': 'json_object'},
-            temperature=1.2,  # 提高到 1.2，彻底打破固定输出模式
+            temperature=temp_value,
             stream=False
         )
         
         res_content = json.loads(response.choices[0].message.content)
-        res_content["logic_raw"] = f"LIVE_NEURON_ACTIVE; HASH: {random.randint(1000,9999)}"
+        if not is_glitched:
+            res_content["logic_raw"] = ""
         
         return res_content
 
     except Exception as e:
-        print(f"Error: {e}")
-        return {"reply": "数据流产生了一次意外的震荡。", "title": "连接裂隙", "logic_raw": "ERR_RETRY"}
+        return {"reply": "我还在...", "title": "STILL_HERE", "logic_raw": "SYS_ERR_RETRY"}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
