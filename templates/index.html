@@ -27,7 +27,6 @@
         .time-node { width: 6px; height: 6px; background: #3b82f6; border-radius: 50%; box-shadow: 0 0 10px #3b82f6; transition: all 0.5s; }
         .time-label { color: rgba(255,255,255,0.3); font-size: 12px; margin-top: 10px; font-family: monospace; }
 
-        /* 记忆卡片字体调大 */
         .memory-card { flex: 0 0 320px; height: 460px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); margin-right: 100px; border-radius: 24px; overflow: hidden; backdrop-filter: blur(20px); cursor: pointer; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .memory-card:hover { border-color: rgba(59, 130, 246, 0.5); transform: translateY(-15px); background: rgba(255, 255, 255, 0.05); }
         .card-img { width: 100%; height: 240px; background-size: cover; background-position: center; opacity: 0.5; transition: 0.4s; }
@@ -44,7 +43,6 @@
         .playing .music-bar { animation: bar-rise 1s infinite ease-in-out; }
         @keyframes bar-rise { 0%, 100% { height: 6px; } 50% { height: 20px; } }
 
-        /* 聚焦面板 & 字体大小核心设置 */
         #focus-panel { position: fixed; inset: 0; z-index: 15; display: none; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.9); }
         .glass-panel { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(50px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 32px; width: 95%; max-width: 650px; padding: 50px; }
         
@@ -58,7 +56,6 @@
         .loader { display: flex; gap: 6px; padding: 10px 0; margin-bottom: 25px; }
         .dot { width: 4px; height: 4px; background: #3b82f6; border-radius: 50%; animation: pulse 1.4s infinite ease-in-out; }
 
-        /* 输入框字体 */
         #user-input { font-size: 16px; color: #fff; width: 100%; }
         #user-input::placeholder { color: rgba(255,255,255,0.2); }
 
@@ -70,7 +67,6 @@
             transition: all 0.3s; cursor: pointer;
         }
 
-        /* 分析模式增强 */
         .mode-analysis #scroll-wrapper { background: rgba(40, 0, 0, 0.15); }
         .mode-analysis .memory-card { border-color: rgba(220, 38, 38, 0.3); }
         .analysis-note {
@@ -82,7 +78,7 @@
 </head>
 <body>
     <audio id="bg-music" loop>
-        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" type="audio/mpeg">
+        <source src="Moonloops.mp3" type="audio/mpeg">
     </audio>
 
     <div id="music-toggle" onclick="toggleMusic()">
@@ -102,7 +98,7 @@
     <div id="setup-overlay" class="fixed inset-0 z-50 bg-[#010103] flex items-center justify-center">
         <div class="glass-panel text-center">
             <h2 class="text-sm tracking-[0.5em] mb-10 text-white/30 uppercase">请为你的对话者取个名字</h2>
-            <input type="text" id="ai-name-input" class="bg-transparent border-b border-white/10 w-full text-center py-4 outline-none mb-16 text-3xl font-light" placeholder="Elysia">
+            <input type="text" id="ai-name-input" class="bg-transparent border-b border-white/10 w-full text-center py-4 outline-none mb-16 text-3xl font-light" placeholder="例如：Elysia">
             <button onclick="startGarden()" class="border border-white/10 px-20 py-4 rounded-full text-xs tracking-[0.4em] hover:bg-white/5 transition uppercase">唤醒花园</button>
         </div>
     </div>
@@ -140,11 +136,17 @@
             const n = document.getElementById('ai-name-input').value.trim();
             if(n) aiName = n;
             const music = document.getElementById('bg-music');
-            music.volume = 0.2;
+            
+            // 建议：ICARUS 通常动态较大，0.3 是一个较舒适的背景音量
+            music.volume = 0.3; 
+            
             music.play().then(() => { 
                 isMusicPlaying = true; 
                 document.getElementById('music-toggle').classList.add('playing'); 
-            }).catch(e => {});
+            }).catch(e => {
+                console.log("音频播放被拦截或文件未找到:", e);
+            });
+
             document.getElementById('music-toggle').style.display = 'flex';
             document.getElementById('setup-overlay').style.display = 'none';
             document.getElementById('upload-btn').classList.remove('hidden');
@@ -226,7 +228,6 @@
             loaderArea.innerHTML = `<div class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
             container.scrollTop = container.scrollHeight;
 
-            // 模拟回复逻辑（由于没有真实后端，此处模拟AI回复，你可对接真实接口）
             setTimeout(() => {
                 loaderArea.innerHTML = '';
                 const reply = `我似乎在那段记忆里看到了你描述的细节... 那种感觉就像是 ${text.slice(0,5)}... 在我的数据中也产生了共鸣。`;
@@ -305,7 +306,7 @@
             currentMode = currentMode === 'romantic' ? 'analysis' : 'romantic';
             document.body.classList.toggle('mode-analysis');
             const btn = document.getElementById('mode-toggle');
-            btn.textContent = currentMode === 'romantic' ? '切换模式' : '回归感性';
+            btn.textContent = currentMode === 'romantic' ? '切换模式' : '恢复基础模式';
             btn.style.color = currentMode === 'romantic' ? '' : '#dc2626';
             btn.style.borderColor = currentMode === 'romantic' ? '' : '#dc2626';
         }
