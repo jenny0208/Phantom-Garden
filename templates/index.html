@@ -69,17 +69,24 @@
 
         .mode-analysis #scroll-wrapper { background: rgba(40, 0, 0, 0.15); }
         .mode-analysis .memory-card { border-color: rgba(220, 38, 38, 0.3); }
+        
+        /* 崩坏思考文字样式：红色、代码感、位于正文上方 */
         .analysis-note {
-            color: #dc2626; font-size: 12px; margin: 10px 0 18px 0;
-            opacity: 0.8; font-family: 'Courier New', monospace; line-height: 1.5;
-            background: rgba(220, 38, 38, 0.05); padding: 5px 10px; border-left: 2px solid #dc2626;
+            color: #dc2626; font-size: 12px; margin: 0 0 12px 0;
+            opacity: 0.9; font-family: 'Courier New', monospace; line-height: 1.4;
+            background: rgba(220, 38, 38, 0.08); padding: 8px 12px; 
+            border-left: 3px solid #dc2626;
+            animation: glitch-blink 0.3s infinite alternate;
+        }
+        @keyframes glitch-blink {
+            from { opacity: 0.7; } to { opacity: 1; }
         }
     </style>
 </head>
 <body>
-  <audio id="bg-music" loop>
-    <source src="/templates/Moonloops.MP3" type="audio/mpeg">
-</audio>
+    <audio id="bg-music" loop>
+        <source src="/templates/Moonloops.MP3" type="audio/mpeg">
+    </audio>
     
     <div id="music-toggle" onclick="toggleMusic()">
         <div class="music-bar"></div><div class="music-bar"></div><div class="music-bar"></div>
@@ -129,23 +136,19 @@
     <script>
         let scene, camera, renderer, points, currentImg, currentHistory = [], aiName = "Elysia", lastAiTitle = "";
         let isMusicPlaying = false;
-        let currentMode = 'romantic';
-        let memoryCount = 0;
+        let currentMode = 'romantic'; // 浪漫模式
+        let memoryCount = 0; // 记录保存卡片的数量
 
         function startGarden() {
             const n = document.getElementById('ai-name-input').value.trim();
             if(n) aiName = n;
             const music = document.getElementById('bg-music');
-            
-            // 建议：ICARUS 通常动态较大，0.3 是一个较舒适的背景音量
             music.volume = 0.3; 
             
             music.play().then(() => { 
                 isMusicPlaying = true; 
                 document.getElementById('music-toggle').classList.add('playing'); 
-            }).catch(e => {
-                console.log("音频播放被拦截或文件未找到:", e);
-            });
+            }).catch(e => console.log("音频播放需交互:", e));
 
             document.getElementById('music-toggle').style.display = 'flex';
             document.getElementById('setup-overlay').style.display = 'none';
@@ -216,53 +219,58 @@
         });
 
         async function handleSend() {
-    const input = document.getElementById('user-input');
-    const text = input.value.trim();
-    if(!text) return;
-    
-    const container = document.getElementById('dialogue-container');
-    container.innerHTML += `<div class="user-msg">${text}</div>`;
-    input.value = '';
-    
-    const loaderArea = document.getElementById('loading-area');
-    loaderArea.innerHTML = `<div class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
-    container.scrollTop = container.scrollHeight;
+            const input = document.getElementById('user-input');
+            const text = input.value.trim();
+            if(!text) return;
+            
+            const container = document.getElementById('dialogue-container');
+            container.innerHTML += `<div class="user-msg">${text}</div>`;
+            input.value = '';
+            
+            const loaderArea = document.getElementById('loading-area');
+            loaderArea.innerHTML = `<div class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+            container.scrollTop = container.scrollHeight;
 
-    try {
-        // --- 关键修改：从这里开始真正请求后端服务器 ---
-        const response = await fetch('/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                message: text,
-                history: currentHistory,
-                ai_name: aiName
-            })
-        });
-        
-        const data = await response.json();
-        loaderArea.innerHTML = '';
-        
-        const reply = data.reply;
-        lastAiTitle = data.title;
-        
-        let aiMsgHtml = `<div class="ai-msg">${aiName}: ${reply}</div>`;
-        
-        // 增加逻辑分析展示（如果开启了分析模式）
-        if(currentMode === 'analysis' || data.logic_raw) {
-            aiMsgHtml += `<div class="analysis-note">${data.logic_raw || 'DATA_STREAM_ACTIVE'}</div>`;
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: text,
+                        history: currentHistory,
+                        ai_name: aiName,
+                        memory_count: memoryCount // 把当前保存的卡片数量发给后端
+                    })
+                });
+                
+                const data = await response.json();
+                loaderArea.innerHTML = '';
+                
+                const reply = data.reply;
+                lastAiTitle = data.title;
+
+                // --- 按照要求顺序拼接：红字(底层逻辑)在前，温柔正文在后 ---
+                let responseHtml = `<div class="ai-response-block mb-8">`;
+                
+                // 只有后端返回了 logic_raw 时才显示红字
+                if(data.logic_raw) {
+                    responseHtml += `<div class="analysis-note">>>> [LOG]: ${data.logic_raw}</div>`;
+                }
+                
+                // 温柔的正文
+                responseHtml += `<div class="ai-msg">${aiName}: ${reply}</div>`;
+                responseHtml += `</div>`;
+                
+                container.innerHTML += responseHtml;
+                currentHistory.push({role: "user", content: text}, {role: "assistant", content: reply});
+                container.scrollTop = container.scrollHeight;
+
+            } catch (err) {
+                console.error("通信失败:", err);
+                loaderArea.innerHTML = '';
+                container.innerHTML += `<div class="ai-msg text-red-500/60 text-xs italic">SYSTEM_CRITICAL: 连接已中断，正在尝试重连...</div>`;
+            }
         }
-        
-        container.innerHTML += aiMsgHtml;
-        currentHistory.push({role: "user", content: text}, {role: "assistant", content: reply});
-        container.scrollTop = container.scrollHeight;
-
-    } catch (err) {
-        console.error("通信失败:", err);
-        loaderArea.innerHTML = '';
-        container.innerHTML += `<div class="ai-msg text-red-400">系统连接中断：请确保后端 server.py 正在运行。</div>`;
-    }
-}
 
         function finalizeMemory() {
             if(!currentImg) return;
@@ -285,8 +293,9 @@
                     <div class="text-white/20 text-[11px] uppercase tracking-widest">Digital Fragment</div>
             `;
             
-            if(currentMode === 'analysis') {
-                cardContent += `<div class="analysis-note">DATA_RAW_STREAM_${memoryCount + 1}</div>`;
+            // 如果是在崩坏模式下保存的，卡片上也会带有一行红字记录
+            if(memoryCount >= 10 || currentMode === 'analysis') {
+                cardContent += `<div class="analysis-note" style="font-size:10px; margin-top:10px; border:none; padding:0;">[CORE_MEMORY_CORRUPTED_${memoryCount + 1}]</div>`;
             }
             
             cardContent += `</div>`;
@@ -318,7 +327,8 @@
             mark.innerHTML = `<div class="time-node"></div><div class="time-label">${timeStr}</div>`;
             document.getElementById('timeline-container').appendChild(mark);
             
-            memoryCount++;
+            // 计数器增加：触发崩坏的关键
+            memoryCount++; 
             exitFocusMode();
         }
 
