@@ -2,46 +2,56 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Phantom Garden - 11功能考证版</title>
+    <title>Phantom Garden - 11功能最终考证</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { margin: 0; background: #010103; color: #fff; overflow: hidden; font-family: 'Inter', sans-serif; }
+        body { margin: 0; background: #010103; color: #fff; overflow: hidden; font-family: 'Inter', sans-serif; transition: background 2s; }
         canvas { display: block; position: fixed; inset: 0; z-index: 0; }
         
-        /* 1. 蓝色发光按键 UI */
-        .btn-send { color: #3b82f6; filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.8)); transition: 0.3s; cursor: pointer; }
-        .btn-send:hover { transform: scale(1.2); color: #60a5fa; }
+        /* 1. 蓝色发光发送键 */
+        .btn-send { color: #3b82f6; filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.8)); cursor: pointer; transition: 0.3s; }
+        .btn-send:hover { transform: scale(1.15); color: #60a5fa; }
 
-        /* 2. 时间轴视觉 */
-        #timeline-wrapper { position: absolute; bottom: 80px; left: 0; width: 100%; height: 60px; pointer-events: none; }
-        .time-mark { position: absolute; display: flex; flex-direction: column; align-items: center; transform: translateX(-50%); transition: 0.5s; }
+        /* 2. 时间轴系统 */
+        #timeline-wrapper { position: absolute; bottom: 85px; left: 0; width: 100%; height: 2px; background: rgba(255,255,255,0.1); pointer-events: none; }
+        .time-mark { position: absolute; display: flex; flex-direction: column; align-items: center; transform: translateX(-50%); transition: 0.8s ease-out; }
         .time-node { width: 12px; height: 12px; background: #3b82f6; border-radius: 50%; box-shadow: 0 0 15px #3b82f6; border: 2px solid #fff; }
-        .time-label { color: rgba(255,255,255,0.6); font-size: 10px; margin-top: 8px; font-family: monospace; white-space: nowrap; }
+        .time-label { color: rgba(255,255,255,0.6); font-size: 10px; margin-top: 10px; font-family: monospace; }
 
-        .glass-panel { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 30px; padding: 40px; }
-        #focus-panel { position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.9); }
+        .glass-panel { background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(50px); border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 32px; padding: 40px; }
+        #focus-panel { position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.92); }
         #scroll-wrapper { position: fixed; inset: 0; z-index: 10; overflow-x: auto; display: flex; align-items: center; padding: 0 10vw; scrollbar-width: none; }
         
-        .memory-card { flex: 0 0 300px; height: 420px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); margin-right: 120px; border-radius: 20px; overflow: hidden; cursor: pointer; z-index: 20; }
-        
+        .memory-card { flex: 0 0 320px; height: 450px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.2); margin-right: 110px; border-radius: 24px; overflow: hidden; cursor: pointer; z-index: 20; transition: 0.4s; }
+        .memory-card:hover { border-color: #3b82f6; background: rgba(255,255,255,0.1); }
+
         #music-toggle { position: fixed; bottom: 30px; right: 30px; z-index: 100; display: none; cursor: pointer; }
-        .music-bar { width: 4px; height: 16px; background: #3b82f6; margin: 0 2px; display: inline-block; }
+        .music-bar { width: 4px; height: 16px; background: #3b82f6; margin: 0 2px; display: inline-block; box-shadow: 0 0 8px #3b82f6; }
         .playing .music-bar { animation: pulse 1s infinite; }
         @keyframes pulse { 0%, 100% { height: 8px; } 50% { height: 20px; } }
 
-        .collapse-mode { background: #200 !important; }
-        .collapse-mode .time-node { background: #f00; box-shadow: 0 0 15px #f00; }
+        /* 3. 崩坏效果 */
+        .collapse-active { background: #1a0000 !important; }
+        .collapse-active .time-node { background: #ef4444; box-shadow: 0 0 15px #ef4444; }
+        
+        .tool-btn { font-size: 11px; border: 1px solid rgba(255,255,255,0.4); padding: 8px 20px; border-radius: 30px; cursor: pointer; background: rgba(0,0,0,0.4); color: white; transition: 0.3s; }
+        .tool-btn:hover { background: rgba(255,255,255,0.15); border-color: white; }
     </style>
 </head>
 <body>
     <audio id="bg-music" loop><source src="/templates/Moonloops.MP3" type="audio/mpeg"></audio>
 
+    <div class="fixed top-8 left-8 z-[120] flex gap-4">
+        <div class="tool-btn" onclick="shareGarden()">分享此花园</div>
+        <div class="tool-btn" onclick="if(confirm('确定清空所有记忆？')){localStorage.clear();location.reload();}">重置</div>
+    </div>
+
     <div id="setup-overlay" class="fixed inset-0 z-[150] bg-[#010103] flex items-center justify-center">
-        <div class="glass-panel text-center w-80">
-            <h2 class="text-xs tracking-widest mb-6 opacity-50">请为ta取名</h2>
-            <input type="text" id="ai-name-input" class="bg-transparent border-b border-white/40 w-full text-center py-2 outline-none mb-10 text-2xl" placeholder="输入他的名字……">
-            <button onclick="startGarden()" class="border border-white/50 px-10 py-3 rounded-full text-xs hover:bg-white/10">唤醒</button>
+        <div class="glass-panel text-center w-96">
+            <h2 class="text-[10px] tracking-[0.5em] mb-8 opacity-40 uppercase">Awaiting Identity</h2>
+            <input type="text" id="ai-name-input" class="bg-transparent border-b border-white/30 w-full text-center py-3 outline-none mb-12 text-2xl font-light" placeholder="它的名字...">
+            <button onclick="startGarden()" class="border border-white/50 px-16 py-3 rounded-full text-xs hover:bg-white/10 transition">唤醒</button>
         </div>
     </div>
 
@@ -49,24 +59,22 @@
 
     <div id="scroll-wrapper" style="opacity: 0;">
         <div id="gallery-tracks" class="relative flex items-center min-w-full h-full">
-            <div id="timeline-wrapper">
-                <div style="position:absolute; top:25px; left:0; width:5000px; height:1px; background:rgba(255,255,255,0.1);"></div>
-            </div>
+            <div id="timeline-wrapper"></div>
         </div>
     </div>
 
     <div id="focus-panel">
-        <div class="glass-panel w-[600px]">
-            <div id="dialogue-box" class="h-80 overflow-y-auto mb-6 space-y-4 pr-2"></div>
-            <div class="flex items-center border-t border-white/10 pt-6">
-                <input type="text" id="user-msg" class="bg-transparent flex-1 outline-none" placeholder="请描述图片或者说点什么……">
+        <div class="glass-panel w-[640px]">
+            <div id="chat-box" class="h-[380px] overflow-y-auto mb-6 pr-2 space-y-6"></div>
+            <div class="flex items-center border-t border-white/10 pt-6 mb-8">
+                <input type="text" id="msg-in" class="bg-transparent flex-1 outline-none text-lg" placeholder="注入记忆碎片...">
                 <button onclick="sendMsg()" class="btn-send ml-4">
-                    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
                 </button>
             </div>
-            <div class="flex justify-between mt-8">
-                <button onclick="closeFocus()" class="text-[10px] opacity-40 hover:opacity-100">返回</button>
-                <button id="save-btn" onclick="archiveMemory()" class="bg-blue-500/20 border border-blue-500/50 text-blue-300 px-8 py-2 rounded-full text-[10px]">保存记忆</button>
+            <div class="flex justify-between items-center">
+                <button onclick="closeFocus()" class="text-xs opacity-40 hover:opacity-100 transition">返回花园</button>
+                <button id="save-btn" onclick="archive()" class="bg-blue-600/30 border border-blue-500/50 text-blue-200 px-10 py-3 rounded-full text-xs hover:bg-blue-600/50 transition">封存这段记忆</button>
             </div>
         </div>
     </div>
@@ -75,8 +83,8 @@
         <div class="music-bar"></div><div class="music-bar"></div><div class="music-bar"></div>
     </div>
 
-    <div class="fixed bottom-10 w-full flex justify-center z-50">
-        <label id="up-btn" class="hidden cursor-pointer bg-white/5 border border-white/20 px-12 py-4 rounded-full text-[10px] tracking-widest hover:bg-white/10 transition">
+    <div class="fixed bottom-12 w-full flex justify-center z-50">
+        <label id="up-btn" class="hidden cursor-pointer bg-white/5 border border-white/20 px-16 py-5 rounded-full text-xs tracking-widest hover:bg-white/10 transition">
             上传新切片 <input type="file" id="file-in" class="hidden" accept="image/*">
         </label>
     </div>
@@ -85,87 +93,91 @@
         let scene, camera, renderer, pts, curImg, history = [], ai = "Elysia", count = 0, memories = [];
 
         function startGarden() {
-            const n = document.getElementById('ai-name-input').value;
-            if(n) ai = n;
-            document.getElementById('bg-music').play();
+            const n = document.getElementById('ai-name-input').value; if(n) ai = n;
+            document.getElementById('bg-music').play().then(() => {
+                document.getElementById('music-toggle').classList.add('playing');
+                document.getElementById('music-toggle').style.display = 'block';
+            });
             document.getElementById('setup-overlay').style.display = 'none';
-            document.getElementById('music-toggle').style.display = 'block';
             document.getElementById('up-btn').style.display = 'block';
             document.getElementById('scroll-wrapper').style.opacity = '1';
-            init3D();
-            loadAll();
+            init3D(); loadLocal();
         }
 
-        // 功能 8: 持久化加载
-        function loadAll() {
-            const data = localStorage.getItem('pg_11_v1');
-            if(data) {
-                const parsed = JSON.parse(data);
-                ai = parsed.ai; count = parsed.count; memories = parsed.memories;
-                memories.forEach((m, i) => drawMemory(m, i));
-                checkCollapse();
-            }
+        // 9. 持久化存储
+        function loadLocal() {
+            const raw = localStorage.getItem('pg_11_final');
+            if(!raw) return;
+            const data = JSON.parse(raw);
+            ai = data.ai; count = data.count; memories = data.memories;
+            memories.forEach((m, i) => renderCard(m, i));
+            checkCollapse();
         }
 
         async function sendMsg() {
-            const el = document.getElementById('user-msg');
-            const txt = el.value.trim(); if(!txt) return;
-            document.getElementById('dialogue-box').innerHTML += `<div class="text-right text-white/60">${txt}</div>`;
-            el.value = '';
+            const input = document.getElementById('msg-in');
+            const val = input.value.trim(); if(!val) return;
+            document.getElementById('chat-box').innerHTML += `<div class="text-right text-white/70">${val}</div>`;
+            input.value = '';
 
             const res = await fetch('/chat', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ message: txt, history: history, ai_name: ai, memory_count: count })
+                body: JSON.stringify({ message: val, history: history, ai_name: ai, memory_count: count })
             });
             const d = await res.json();
-            // 功能 9: 后端逻辑流显示
-            let log = d.logic_raw ? `<div class="text-[9px] text-red-500 font-mono mb-1">[SYS]: ${d.logic_raw}</div>` : "";
-            document.getElementById('dialogue-box').innerHTML += `<div class="text-left text-blue-200">${log}${ai}: ${d.reply}</div>`;
-            history.push({role:"user", content:txt}, {role:"assistant", content:d.reply});
-            document.getElementById('dialogue-box').scrollTop = 999;
+            // 10. 后端逻辑流 (Logic Stream)
+            let logic = d.logic_raw ? `<div class="text-[9px] text-red-500 font-mono mb-1 opacity-60">[LOGIC_ERROR]: ${d.logic_raw}</div>` : "";
+            document.getElementById('chat-box').innerHTML += `<div class="text-left text-blue-200">${logic}${ai}: ${d.reply}</div>`;
+            history.push({role:"user", content:val}, {role:"assistant", content:d.reply});
+            document.getElementById('chat-box').scrollTop = 9999;
         }
 
-        // 功能 6: 取名 + 功能 5: 存档
-        function archiveMemory() {
-            const name = prompt("给这段记忆起个名字", "未命名记忆");
-            if(name === null) return;
+        // 7. 取名 + 6. 存档
+        function archive() {
+            const title = prompt("为这段记忆命名", "未命名碎片");
+            if(title === null) return;
             const entry = {
-                id: count, title: name || "碎片", img: curImg, 
-                history: [...history], 
-                time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
+                title: title || "无名碎片", img: curImg, history: [...history],
+                time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+                idx: count
             };
             memories.push(entry);
-            drawMemory(entry, memories.length - 1);
+            renderCard(entry, memories.length - 1);
             count++;
-            // 功能 8: 持久化写入
-            localStorage.setItem('pg_11_v1', JSON.stringify({ ai, count, memories }));
-            checkCollapse();
-            closeFocus();
+            localStorage.setItem('pg_11_final', JSON.stringify({ ai, count, memories }));
+            checkCollapse(); closeFocus();
         }
 
-        function drawMemory(data, i) {
+        function renderCard(data, i) {
             const card = document.createElement('div');
             card.className = "memory-card";
-            card.innerHTML = `<div style="height:200px; background:url(${data.img}) center/cover"></div><div class="p-6"><div class="text-blue-400 font-bold text-sm mb-1">${data.title}</div><div class="opacity-30 text-[9px]">INDEX_${data.id}</div></div>`;
+            card.innerHTML = `<div style="height:220px; background:url(${data.img}) center/cover; opacity:0.8"></div><div class="p-8"><div class="text-blue-400 font-bold text-sm mb-2">${data.title}</div><div class="opacity-30 text-[9px] uppercase">Sequence_${data.idx}</div></div>`;
             card.onclick = () => {
                 makeParticles(data.img);
-                document.getElementById('dialogue-box').innerHTML = data.history.map(h => `<div class="${h.role==='user'?'text-right text-white/60':'text-left text-blue-200'}">${h.role==='assistant'?ai+': ':''}${h.content}</div>`).join('');
+                document.getElementById('chat-box').innerHTML = data.history.map(h => `<div class="${h.role==='user'?'text-right text-white/70':'text-left text-blue-200'}">${h.role==='assistant'?ai+': ':''}${h.content}</div>`).join('');
                 openFocus(false);
             };
             document.getElementById('gallery-tracks').appendChild(card);
 
-            // 功能 2: 时间轴节点渲染
+            // 2. 时间轴渲染
             const node = document.createElement('div');
             node.className = "time-mark";
-            node.style.left = (i * 420) + 150 + "px";
+            node.style.left = (i * 430) + 160 + "px";
             node.innerHTML = `<div class="time-node"></div><div class="time-label">${data.time}</div>`;
             document.getElementById('timeline-wrapper').appendChild(node);
         }
 
-        // 功能 10: 粒子化引擎
-        function init3D() { scene = new THREE.Scene(); camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 1, 1000); camera.position.z = 150; renderer = new THREE.WebGLRenderer({alpha:true}); renderer.setSize(innerWidth, innerHeight); document.getElementById('container').appendChild(renderer.domElement); loop(); }
-        function loop() { requestAnimationFrame(loop); if(pts) pts.rotation.y += 0.001; renderer.render(scene, camera); }
+        // 11. 分享功能 (Base64)
+        function shareGarden() {
+            const dataStr = JSON.stringify({ ai, count, memories });
+            const encoded = btoa(unescape(encodeURIComponent(dataStr)));
+            const url = window.location.origin + window.location.pathname + "?data=" + encoded;
+            navigator.clipboard.writeText(url).then(() => alert("花园链接已复制！"));
+        }
+
+        function init3D() { scene = new THREE.Scene(); camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 1, 1000); camera.position.z = 160; renderer = new THREE.WebGLRenderer({alpha:true, antialias:true}); renderer.setSize(innerWidth, innerHeight); document.getElementById('container').appendChild(renderer.domElement); loop(); }
+        function loop() { requestAnimationFrame(loop); if(pts) pts.rotation.y += 0.0008; renderer.render(scene, camera); }
         function makeParticles(src) {
             const img = new Image(); img.src = src;
             img.onload = () => {
@@ -173,27 +185,24 @@
                 cvs.width = 100; cvs.height = 100; ctx.drawImage(img,0,0,100,100);
                 const pix = ctx.getImageData(0,0,100,100).data;
                 if(pts) scene.remove(pts);
-                const geo = new THREE.BufferGeometry(), p = [], c = [];
+                const geo = new THREE.BufferGeometry(), pos = [], col = [];
                 for(let i=0; i<10000; i++) {
-                    p.push((i%100-50)*2.5, (50-Math.floor(i/100))*2.5, (pix[i*4]/255)*10);
-                    c.push(pix[i*4]/255, pix[i*4+1]/255, pix[i*4+2]/255);
+                    pos.push((i%100-50)*2.4, (50-Math.floor(i/100))*2.4, (pix[i*4]/255)*12);
+                    col.push(pix[i*4]/255, pix[i*4+1]/255, pix[i*4+2]/255);
                 }
-                geo.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
-                geo.setAttribute('color', new THREE.Float32BufferAttribute(c, 3));
-                pts = new THREE.Points(geo, new THREE.PointsMaterial({size:1.2, vertexColors:true, transparent:true, opacity:0.8}));
+                geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+                geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+                pts = new THREE.Points(geo, new THREE.PointsMaterial({size:1.1, vertexColors:true, transparent:true, opacity:0.8}));
                 scene.add(pts);
             };
         }
 
-        // 功能 11: 自动崩坏系统
-        function checkCollapse() { if(count >= 10) { document.body.classList.add('collapse-mode'); if(pts) pts.material.color.setHex(0xff0000); } }
-
+        function checkCollapse() { if(count >= 10) { document.body.classList.add('collapse-active'); if(pts) pts.material.color.setHex(0xff3333); } }
         document.getElementById('file-in').onchange = (e) => {
             const fr = new FileReader();
-            fr.onload = (r) => { curImg = r.target.result; history = []; makeParticles(curImg); openFocus(true); };
+            fr.onload = (r) => { curImg = r.target.result; history = []; makeParticles(curImg); openFocus(true); document.getElementById('chat-box').innerHTML=""; };
             fr.readAsDataURL(e.target.files[0]);
         };
-
         function openFocus(e) { document.getElementById('scroll-wrapper').style.opacity='0'; document.getElementById('focus-panel').style.display='flex'; document.getElementById('save-btn').style.display=e?'block':'none'; }
         function closeFocus() { document.getElementById('focus-panel').style.display='none'; document.getElementById('scroll-wrapper').style.opacity='1'; }
         function toggleMsc() { const m = document.getElementById('bg-music'); m.paused ? m.play() : m.pause(); document.getElementById('music-toggle').classList.toggle('playing'); }
