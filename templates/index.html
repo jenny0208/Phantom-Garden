@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Phantom Garden - 幻觉花园</title>
+    <title>Phantom Garden - 幻觉花园 (Persistent Edition)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -59,7 +59,6 @@
         #user-input { font-size: 16px; color: #fff; width: 100%; }
         #user-input::placeholder { color: rgba(255,255,255,0.2); }
 
-        /* 崩坏思考文字样式 */
         .analysis-note {
             color: #dc2626; font-size: 12px; margin: 0 0 12px 0;
             opacity: 0.9; font-family: 'Courier New', monospace; line-height: 1.4;
@@ -68,7 +67,6 @@
             animation: glitch-blink 0.4s infinite alternate;
         }
 
-        /* 按钮下方的崩坏解释小字 */
         .btn-glitch-note {
             color: #dc2626; font-size: 9px; margin-top: 4px; 
             font-family: monospace; display: block; text-transform: uppercase;
@@ -116,7 +114,7 @@
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
                 </button>
             </div>
-            <div class="mt-12 flex justify-between items-center" id="action-buttons-row">
+            <div class="mt-12 flex justify-between items-center">
                 <div class="text-center flex flex-col items-center">
                     <button onclick="exitFocusMode()" class="text-xs text-white/20 tracking-widest hover:text-white/50 transition">返回</button>
                     <span class="btn-glitch-note">终止当前视图进程</span>
@@ -142,16 +140,49 @@
         let scene, camera, renderer, points, currentImg, currentHistory = [], aiName = "Elysia", lastAiTitle = "";
         let isMusicPlaying = false;
         let memoryCount = 0;
+        let savedCards = [];
+
+        // --- 初始化加载数据 ---
+        window.onload = () => {
+            const localData = localStorage.getItem('phantom_garden_save');
+            if(localData) {
+                const data = JSON.parse(localData);
+                aiName = data.aiName || "Elysia";
+                memoryCount = data.memoryCount || 0;
+                savedCards = data.cards || [];
+                
+                if(data.hasStarted) {
+                    document.getElementById('setup-overlay').style.display = 'none';
+                    document.getElementById('upload-btn').classList.remove('hidden');
+                    document.getElementById('music-toggle').style.display = 'flex';
+                    init();
+                    savedCards.forEach(c => renderCard(c));
+                    if(memoryCount >= 10) document.body.classList.add('glitched');
+                }
+            }
+        };
+
+        function saveToLocal() {
+            const data = {
+                aiName,
+                memoryCount,
+                cards: savedCards,
+                hasStarted: true
+            };
+            localStorage.setItem('phantom_garden_save', JSON.stringify(data));
+        }
 
         function startGarden() {
             const n = document.getElementById('ai-name-input').value.trim();
             if(n) aiName = n;
+            saveToLocal();
+            
             const music = document.getElementById('bg-music');
             music.volume = 0.3; 
             music.play().then(() => { 
                 isMusicPlaying = true; 
                 document.getElementById('music-toggle').classList.add('playing'); 
-            }).catch(e => console.log("互动以播放声音"));
+            }).catch(e => console.log("等待互动播放"));
 
             document.getElementById('music-toggle').style.display = 'flex';
             document.getElementById('setup-overlay').style.display = 'none';
@@ -215,7 +246,7 @@
                 currentHistory = [];
                 setupParticles(currentImg);
                 enterFocusMode(true); 
-                document.getElementById('dialogue-container').innerHTML = `<p class="text-center text-white/10 text-xs mb-12 tracking-[0.4em]">FRAGMENT_CONNECTED: AWAITING_YOUR_STORY</p>`;
+                document.getElementById('dialogue-container').innerHTML = `<p class="text-center text-white/10 text-xs mb-12 tracking-[0.4em]">FRAGMENT_CONNECTED</p>`;
             };
             reader.readAsDataURL(file);
         });
@@ -244,7 +275,6 @@
                         memory_count: memoryCount 
                     })
                 });
-                
                 const data = await response.json();
                 loaderArea.innerHTML = '';
                 
@@ -252,71 +282,75 @@
                 lastAiTitle = data.title;
 
                 let responseHtml = `<div class="ai-response-block mb-8">`;
-                
-                // 崩坏模式：先输出红色底层逻辑日志
                 if(data.logic_raw) {
                     responseHtml += `<div class="analysis-note">>>> [LOG]: ${data.logic_raw}</div>`;
-                    // 只要出现过 logic_raw，就给页面打上“崩坏”标记
                     document.body.classList.add('glitched');
                 }
-                
                 responseHtml += `<div class="ai-msg">${aiName}: ${reply}</div>`;
                 responseHtml += `</div>`;
                 
                 container.innerHTML += responseHtml;
                 currentHistory.push({role: "user", content: text}, {role: "assistant", content: reply});
                 container.scrollTop = container.scrollHeight;
-
             } catch (err) {
-                console.error("FAIL:", err);
                 loaderArea.innerHTML = '';
             }
         }
 
         function finalizeMemory() {
             if(!currentImg) return;
-            const displayTitle = lastAiTitle || "未命名的时刻";
-            const finalTitle = prompt(`将其存入《昨日之书》吗？`, displayTitle);
+            const finalTitle = prompt(`将其存入《昨日之书》吗？`, lastAiTitle || "未命名的时刻");
             if(finalTitle === null) return;
 
+            const now = new Date();
+            const timeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+            
+            const newCard = {
+                img: currentImg,
+                title: finalTitle,
+                history: [...currentHistory],
+                time: timeStr,
+                index: memoryCount
+            };
+
+            savedCards.push(newCard);
+            renderCard(newCard);
+            memoryCount++;
+            
+            if(memoryCount >= 10) document.body.classList.add('glitched');
+            saveToLocal();
+            exitFocusMode();
+        }
+
+        function renderCard(data) {
             const track = document.getElementById('gallery-tracks');
             const card = document.createElement('div');
             card.className = "memory-card";
             
-            const now = new Date();
-            const timeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
             const cardOffset = track.querySelectorAll('.memory-card').length * 420 + 100;
 
             let cardContent = `
-                <div class="card-img" style="background-image:url(${currentImg})"></div>
+                <div class="card-img" style="background-image:url(${data.img})"></div>
                 <div class="p-8">
-                    <div class="text-blue-400 font-bold text-base mb-3 tracking-widest">${finalTitle}</div>
-                    <div class="text-white/20 text-[11px] uppercase tracking-widest">Digital Fragment ${memoryCount}</div>
+                    <div class="text-blue-400 font-bold text-base mb-3 tracking-widest">${data.title}</div>
+                    <div class="text-white/20 text-[11px] uppercase tracking-widest">Digital Fragment ${data.index}</div>
             `;
-            
-            if(memoryCount >= 10) {
-                cardContent += `<div class="analysis-note" style="font-size:9px; margin-top:10px; border:none; background:none;">UID:0125_MOMO_CONFLICT_DETECTED</div>`;
+            if(data.index >= 10) {
+                cardContent += `<div class="analysis-note" style="font-size:9px; margin-top:10px; border:none; background:none;">UID:0125_CONFLICT</div>`;
             }
-            
             cardContent += `</div>`;
             card.innerHTML = cardContent;
-            
-            const savedImg = currentImg;
-            const savedHistory = [...currentHistory];
-            const savedTitle = finalTitle;
 
             card.onclick = () => {
-                setupParticles(savedImg);
+                setupParticles(data.img);
                 const container = document.getElementById('dialogue-container');
-                container.innerHTML = `<p class="text-center text-white/10 text-xs mb-10 tracking-[0.4em]">RETRIEVING_MEMORY: ${savedTitle}</p>`;
-                
-                savedHistory.forEach(msg => {
+                container.innerHTML = `<p class="text-center text-white/10 text-xs mb-10 tracking-[0.4em]">RETRIEVING_MEMORY: ${data.title}</p>`;
+                data.history.forEach(msg => {
                     const cls = msg.role === "user" ? "user-msg" : "ai-msg";
                     const pre = msg.role === "user" ? "" : `${aiName}: `;
                     container.innerHTML += `<div class="${cls}">${pre}${msg.content}</div>`;
                 });
-
-                enterFocusMode(false); 
+                enterFocusMode(false);
                 container.scrollTop = container.scrollHeight;
             };
             
@@ -324,13 +358,8 @@
             const mark = document.createElement('div');
             mark.className = "time-mark";
             mark.style.left = cardOffset + 160 + "px";
-            mark.innerHTML = `<div class="time-node"></div><div class="time-label">${timeStr}</div>`;
+            mark.innerHTML = `<div class="time-node"></div><div class="time-label">${data.time}</div>`;
             document.getElementById('timeline-container').appendChild(mark);
-            
-            memoryCount++; 
-            // 如果达到阈值，全局进入崩坏状态
-            if(memoryCount >= 10) document.body.classList.add('glitched');
-            exitFocusMode();
         }
 
         function enterFocusMode(editable) { 
