@@ -191,7 +191,26 @@
         function checkCollapse() { if(count >= 10) { document.body.classList.add('collapse-active'); if(pts) pts.material.color.setHex(0xff3333); } }
         document.getElementById('file-in').onchange = (e) => {
             const fr = new FileReader();
-            fr.onload = (r) => { curImg = r.target.result; history = []; makeParticles(curImg); openFocus(true); document.getElementById('chat-box').innerHTML=""; };
+            fr.onload = (r) => {
+                const img = new Image();
+                img.src = r.target.result;
+                img.onload = () => {
+                    // --- 压缩逻辑开始 ---
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = 200; 
+                    canvas.height = 200;
+                    ctx.drawImage(img, 0, 0, 200, 200);
+                    // 导出压缩后的 Base64 字符串
+                    curImg = canvas.toDataURL('image/jpeg', 0.5); 
+                    // --- 压缩逻辑结束 ---
+
+                    history = []; 
+                    makeParticles(curImg); 
+                    openFocus(true); 
+                    document.getElementById('chat-box').innerHTML="";
+                };
+            };
             fr.readAsDataURL(e.target.files[0]);
         };
         function openFocus(e) { document.getElementById('scroll-wrapper').style.opacity='0'; document.getElementById('focus-panel').style.display='flex'; document.getElementById('save-btn').style.display=e?'block':'none'; }
