@@ -2,161 +2,145 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Phantom Garden</title>
+    <title>Phantom Garden - 幻觉花园</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { margin: 0; background: #010103; color: #fff; overflow: hidden; font-family: 'Inter', sans-serif; }
         canvas { display: block; position: fixed; inset: 0; z-index: 0; }
         
-        /* 顶部隐藏工具 */
-        .system-tools { position: fixed; top: 30px; left: 30px; z-index: 100; display: flex; gap: 15px; opacity: 0; transition: 0.5s; }
-        .system-tools:hover { opacity: 0.6; }
-        .tool-btn { font-size: 10px; border: 1px solid rgba(255,255,255,0.2); padding: 6px 16px; border-radius: 30px; cursor: pointer; letter-spacing: 0.2em; text-transform: uppercase; }
+        #scroll-wrapper { 
+            position: fixed; inset: 0; z-index: 10; 
+            overflow-x: auto; display: flex; align-items: center;
+            padding: 0 10vw; scrollbar-width: none; 
+            transition: opacity 0.8s ease;
+        }
 
-        #scroll-wrapper { position: fixed; inset: 0; z-index: 10; overflow-x: auto; display: flex; align-items: center; padding: 0 10vw; scrollbar-width: none; transition: opacity 0.8s; }
         #gallery-tracks { display: flex; align-items: center; position: relative; padding-bottom: 150px; }
         
         #timeline-container { position: absolute; bottom: 80px; left: 0; height: 40px; display: flex; align-items: center; pointer-events: none; }
-        #timeline-line { position: absolute; top: 20px; height: 1px; background: rgba(255,255,255,0.1); width: 50000px; }
+        #timeline-line { position: absolute; top: 20px; height: 1px; background: rgba(255,255,255,0.1); width: 30000px; }
         .time-mark { position: absolute; display: flex; flex-direction: column; align-items: center; transform: translateX(-50%); }
         .time-node { width: 6px; height: 6px; background: #3b82f6; border-radius: 50%; box-shadow: 0 0 10px #3b82f6; }
         .time-label { color: rgba(255,255,255,0.3); font-size: 12px; margin-top: 10px; font-family: monospace; }
 
         .memory-card { flex: 0 0 320px; height: 460px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); margin-right: 100px; border-radius: 24px; overflow: hidden; backdrop-filter: blur(20px); cursor: pointer; transition: 0.4s; }
+        .memory-card:hover { border-color: rgba(59, 130, 246, 0.5); transform: translateY(-10px); }
         .card-img { width: 100%; height: 240px; background-size: cover; background-position: center; opacity: 0.5; }
 
-        #music-toggle { position: fixed; bottom: 30px; right: 30px; z-index: 100; width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); display: none; align-items: center; justify-content: center; cursor: pointer; }
-        .music-bar { width: 3px; height: 15px; background: #3b82f6; margin: 0 2px; }
-        .playing .music-bar { animation: bar-rise 1s infinite ease-in-out; }
-        @keyframes bar-rise { 0%, 100% { height: 6px; } 50% { height: 22px; } }
+        /* 顶部系统工具 */
+        .system-tools { position: fixed; top: 30px; left: 30px; z-index: 100; display: flex; gap: 15px; opacity: 0; transition: 0.5s; }
+        .system-tools:hover { opacity: 0.6; }
+        .tool-btn { font-size: 10px; border: 1px solid rgba(255,255,255,0.2); padding: 6px 16px; border-radius: 30px; cursor: pointer; letter-spacing: 0.2em; text-transform: uppercase; }
 
-        /* 发送按钮 */
-        .send-trigger { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); color: #3b82f6; cursor: pointer; transition: 0.3s; margin-left: 15px; }
-        .send-trigger:hover { background: #3b82f6; color: white; transform: rotate(-10deg); }
-
-        /* 纯净启动层 */
-        #start-overlay { position: fixed; inset: 0; z-index: 200; background: #010103; display: flex; align-items: center; justify-content: center; transition: 1s; }
-        
+        /* 交互面板 */
         #focus-panel { position: fixed; inset: 0; z-index: 15; display: none; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.95); }
         .glass-panel { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(50px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 32px; width: 95%; max-width: 650px; padding: 50px; }
     </style>
 </head>
 <body>
     <audio id="bg-music" loop><source src="/templates/Moonloops.MP3" type="audio/mpeg"></audio>
-    
+
     <div class="system-tools">
-        <div class="tool-btn" onclick="generateShareLink()">Share</div>
+        <div class="tool-btn" onclick="generateShareLink()">Share Garden</div>
         <div class="tool-btn" onclick="if(confirm('Reset?')) {localStorage.clear(); location.reload();}">Reset</div>
     </div>
 
-    <div id="music-toggle" onclick="toggleMusic()"><div class="music-bar"></div><div class="music-bar"></div><div class="music-bar"></div></div>
-    
-    <div id="start-overlay" style="display: none;">
-        <button onclick="enterGarden()" class="border border-white/20 px-12 py-4 rounded-full text-[10px] tracking-[0.5em] hover:bg-white/5 transition uppercase text-white/50">
-            CONNECT / 同步
-        </button>
-    </div>
-
-    <div id="setup-overlay" class="fixed inset-0 z-[150] bg-[#010103] flex items-center justify-center" style="display: none;">
+    <div id="setup-overlay" class="fixed inset-0 z-[150] bg-[#010103] flex items-center justify-center">
         <div class="glass-panel text-center">
-            <input type="text" id="ai-name-input" class="bg-transparent border-b border-white/10 w-full text-center py-4 outline-none mb-12 text-2xl font-light" placeholder="ENTER NAME">
-            <button onclick="initName()" class="border border-white/10 px-10 py-3 rounded-full text-[10px] tracking-[0.4em] text-white/30 uppercase hover:text-white transition">Confirm</button>
+            <h2 class="text-xs tracking-[0.5em] mb-10 text-white/30 uppercase">请为你的对话者取个名字</h2>
+            <input type="text" id="ai-name-input" class="bg-transparent border-b border-white/10 w-full text-center py-4 outline-none mb-16 text-3xl font-light" placeholder="Elysia">
+            <button onclick="startGarden()" class="border border-white/10 px-20 py-4 rounded-full text-xs tracking-[0.4em] hover:bg-white/5 transition uppercase">唤醒花园</button>
         </div>
     </div>
 
     <div id="container"></div>
-    <div id="scroll-wrapper" style="opacity: 0;"><div id="gallery-tracks"><div id="timeline-container"><div id="timeline-line"></div></div></div></div>
+
+    <div id="scroll-wrapper" style="opacity: 0;">
+        <div id="gallery-tracks"><div id="timeline-container"><div id="timeline-line"></div></div></div>
+    </div>
 
     <div id="focus-panel">
         <div class="glass-panel">
-            <div id="dialogue-container"></div>
+            <div id="dialogue-container" class="max-h-[300px] overflow-y-auto mb-8 pr-4"></div>
             <div class="flex items-center border-t border-white/5 pt-8">
-                <input type="text" id="user-input" class="bg-transparent flex-1 outline-none text-white/80" placeholder="..." autocomplete="off">
-                <div class="send-trigger" onclick="handleSend()">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                </div>
+                <input type="text" id="user-input" class="bg-transparent flex-1 outline-none text-white/80" placeholder="发送消息..." autocomplete="off">
+                <button onclick="handleSend()" class="ml-4 text-blue-500">SEND</button>
             </div>
             <div class="mt-12 flex justify-between items-center">
-                <button onclick="exitFocusMode()" class="text-[9px] text-white/20 tracking-widest uppercase">Back</button>
-                <button id="archive-btn" onclick="finalizeMemory()" class="bg-blue-600/10 border border-blue-500/30 text-blue-400 px-8 py-2 rounded-full text-[9px] tracking-widest uppercase hover:bg-blue-600/20">Archive</button>
+                <button onclick="exitFocusMode()" class="text-[10px] text-white/20 tracking-widest uppercase">返回</button>
+                <button id="archive-btn" onclick="finalizeMemory()" class="bg-blue-600/10 border border-blue-500/30 text-blue-400 px-10 py-3 rounded-full text-[10px] tracking-widest uppercase">保存记忆</button>
             </div>
         </div>
     </div>
 
     <div class="fixed bottom-16 w-full flex justify-center z-20">
-        <label id="upload-btn" class="cursor-pointer bg-white/5 border border-white/10 px-12 py-4 rounded-full text-[10px] tracking-[0.4em] text-white/30 hover:text-white transition hidden">
-            UPLOAD <input type="file" id="img-upload" class="hidden" accept="image/*">
+        <label id="upload-btn" class="cursor-pointer bg-white/5 border border-white/10 px-16 py-5 rounded-full text-[10px] tracking-[0.4em] text-white/30 hover:text-white transition hidden">
+            开启新的记忆切片 <input type="file" id="img-upload" class="hidden" accept="image/*">
         </label>
     </div>
 
     <script>
-        let scene, camera, renderer, points, currentImg, currentHistory = [], aiName = "Elysia", memoryCount = 0, savedCards = [], isMusicPlaying = false;
+        let scene, camera, renderer, points, currentImg, currentHistory = [], aiName = "Elysia";
+        let memoryCount = 0, savedCards = [];
 
         window.onload = () => {
-            const hasData = new URLSearchParams(window.location.search).get('data') || localStorage.getItem('phantom_garden_save');
-            if (hasData) {
-                // 如果有存档或分享数据，显示 CONNECT 按钮激活音乐
-                document.getElementById('start-overlay').style.display = 'flex';
-            } else {
-                // 如果是第一次玩，显示取名框
-                document.getElementById('setup-overlay').style.display = 'flex';
+            const urlParams = new URLSearchParams(window.location.search);
+            const shareData = urlParams.get('data');
+            const localData = localStorage.getItem('phantom_garden_save');
+            
+            if (shareData || localData) {
+                // 如果有数据，用户点击“唤醒”后会加载
+                console.log("检测到现有数据");
             }
         };
 
-        // 响应 CONNECT 按钮
-        function enterGarden() {
-            startAudio();
-            document.getElementById('start-overlay').style.opacity = '0';
-            setTimeout(() => {
-                document.getElementById('start-overlay').style.display = 'none';
-                const urlParams = new URLSearchParams(window.location.search);
-                const data = urlParams.get('data') ? 
-                    JSON.parse(decodeURIComponent(escape(atob(urlParams.get('data'))))) : 
-                    JSON.parse(localStorage.getItem('phantom_garden_save'));
-                applyState(data);
-            }, 800);
-        }
-
-        // 响应取名确认按钮
-        function initName() {
-            const input = document.getElementById('ai-name-input');
-            aiName = input.value.trim() || "Elysia";
-            startAudio();
-            document.getElementById('setup-overlay').style.display = 'none';
-            applyState({ aiName, memoryCount: 0, cards: [], hasStarted: true });
-        }
-
-        function startAudio() {
+        function startGarden() {
+            const n = document.getElementById('ai-name-input').value.trim();
+            if(n) aiName = n;
+            
+            // 核心：点击触发音频
             const music = document.getElementById('bg-music');
             music.volume = 0.4;
-            music.play().then(() => {
-                isMusicPlaying = true;
-                document.getElementById('music-toggle').classList.add('playing');
-                document.getElementById('music-toggle').style.display = 'flex';
-            }).catch(e => console.log("Audio blocked"));
+            music.play().catch(e => console.log("Audio play blocked"));
+
+            document.getElementById('setup-overlay').style.display = 'none';
+            document.getElementById('upload-btn').classList.remove('hidden');
+            document.getElementById('scroll-wrapper').style.opacity = '1';
+
+            initThree();
+
+            // 加载逻辑：分享链接优先，本地存储次之
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('data')) {
+                const data = JSON.parse(decodeURIComponent(escape(atob(urlParams.get('data')))));
+                applyState(data);
+            } else if (localStorage.getItem('phantom_garden_save')) {
+                const data = JSON.parse(localStorage.getItem('phantom_garden_save'));
+                applyState(data);
+            }
         }
 
         function applyState(data) {
-            aiName = data.aiName || "Elysia";
+            aiName = data.aiName || aiName;
             memoryCount = data.memoryCount || 0;
             savedCards = data.cards || [];
-            document.getElementById('upload-btn').classList.remove('hidden');
-            document.getElementById('scroll-wrapper').style.opacity = '1';
-            initThree();
             savedCards.forEach(c => renderCard(c));
-            if(memoryCount >= 10) document.getElementById('timeline-line').style.background = 'rgba(220, 38, 38, 0.2)';
-            saveLocal();
         }
 
-        function saveLocal() { localStorage.setItem('phantom_garden_save', JSON.stringify({ aiName, memoryCount, cards: savedCards, hasStarted: true })); }
-        
+        function saveLocal() {
+            const data = { aiName, memoryCount, cards: savedCards };
+            localStorage.setItem('phantom_garden_save', JSON.stringify(data));
+        }
+
         function generateShareLink() {
-            const dataStr = JSON.stringify({ aiName, memoryCount, cards: savedCards, hasStarted: true });
+            const dataStr = JSON.stringify({ aiName, memoryCount, cards: savedCards });
             const encoded = btoa(unescape(encodeURIComponent(dataStr)));
-            navigator.clipboard.writeText(window.location.origin + window.location.pathname + '?data=' + encoded).then(() => alert("Copied"));
+            const url = window.location.origin + window.location.pathname + '?data=' + encoded;
+            navigator.clipboard.writeText(url).then(() => alert("分享链接已复制到剪贴板"));
         }
 
+        // --- Three.js & Interaction (保持原型逻辑) ---
         function initThree() {
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
@@ -166,6 +150,7 @@
             document.getElementById('container').appendChild(renderer.domElement);
             animate();
         }
+
         function animate() { requestAnimationFrame(animate); if(points) points.rotation.y += 0.0006; renderer.render(scene, camera); }
 
         function setupParticles(imgSrc) {
@@ -194,8 +179,11 @@
         document.getElementById('img-upload').onchange = (e) => {
             const reader = new FileReader();
             reader.onload = (ev) => {
-                currentImg = ev.target.result; currentHistory = [];
-                setupParticles(currentImg); enterFocusMode(true);
+                currentImg = ev.target.result; 
+                currentHistory = [];
+                setupParticles(currentImg); 
+                enterFocusMode(true);
+                document.getElementById('dialogue-container').innerHTML = "";
             };
             reader.readAsDataURL(e.target.files[0]);
         };
@@ -205,25 +193,28 @@
             const text = input.value.trim(); if(!text) return;
             document.getElementById('dialogue-container').innerHTML += `<div class="user-msg">${text}</div>`;
             input.value = '';
-            try {
-                const res = await fetch('/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: text, history: currentHistory, ai_name: aiName, memory_count: memoryCount })
-                });
-                const data = await res.json();
-                document.getElementById('dialogue-container').innerHTML += `<div class="ai-msg">${aiName}: ${data.reply}</div>`;
-                currentHistory.push({role: "user", content: text}, {role: "assistant", content: data.reply});
-                document.getElementById('dialogue-container').scrollTop = 9999;
-            } catch (e) {}
+            
+            // 这里对接你的 /chat 接口
+            const res = await fetch('/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text, history: currentHistory, ai_name: aiName, memory_count: memoryCount })
+            });
+            const data = await res.json();
+            document.getElementById('dialogue-container').innerHTML += `<div class="ai-msg">${aiName}: ${data.reply}</div>`;
+            currentHistory.push({role: "user", content: text}, {role: "assistant", content: data.reply});
+            document.getElementById('dialogue-container').scrollTop = 9999;
         }
 
         function finalizeMemory() {
-            const title = prompt("Name this memory", "New Fragment");
+            const title = prompt("命名这段记忆", "未命名片段");
             if(!title) return;
             const cardData = { img: currentImg, title, history: [...currentHistory], index: memoryCount, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) };
-            savedCards.push(cardData); renderCard(cardData);
-            memoryCount++; saveLocal(); exitFocusMode();
+            savedCards.push(cardData); 
+            renderCard(cardData);
+            memoryCount++; 
+            saveLocal(); 
+            exitFocusMode();
         }
 
         function renderCard(data) {
@@ -236,6 +227,7 @@
                 enterFocusMode(false);
             };
             document.getElementById('gallery-tracks').appendChild(card);
+            
             const mark = document.createElement('div');
             mark.className = "time-mark";
             mark.style.left = (document.querySelectorAll('.memory-card').length - 1) * 420 + 260 + "px";
@@ -243,9 +235,12 @@
             document.getElementById('timeline-container').appendChild(mark);
         }
 
-        function enterFocusMode(edit) { document.getElementById('scroll-wrapper').style.opacity = '0'; document.getElementById('focus-panel').style.display = 'flex'; }
+        function enterFocusMode(edit) { 
+            document.getElementById('scroll-wrapper').style.opacity = '0'; 
+            document.getElementById('focus-panel').style.display = 'flex'; 
+            document.getElementById('archive-btn').style.display = edit ? 'block' : 'none'; 
+        }
         function exitFocusMode() { document.getElementById('focus-panel').style.display = 'none'; document.getElementById('scroll-wrapper').style.opacity = '1'; }
-        function toggleMusic() { const m = document.getElementById('bg-music'); isMusicPlaying ? m.pause() : m.play(); document.getElementById('music-toggle').classList.toggle('playing'); isMusicPlaying = !isMusicPlaying; }
         document.getElementById('user-input').onkeypress = (e) => e.key==='Enter' && handleSend();
     </script>
 </body>
