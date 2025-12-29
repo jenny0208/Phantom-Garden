@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Phantom Garden - 幻觉花园 (Showcase Edition)</title>
+    <title>Phantom Garden - 幻觉花园</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -10,176 +10,189 @@
         canvas { display: block; position: fixed; inset: 0; z-index: 0; }
         
         .system-tools {
-            position: fixed; top: 20px; left: 20px; z-index: 100;
-            display: flex; gap: 12px; opacity: 0.15; transition: 0.3s;
+            position: fixed; top: 30px; left: 30px; z-index: 100;
+            display: flex; gap: 15px; opacity: 0; transition: 0.5s ease;
         }
-        .system-tools:hover { opacity: 1; }
+        .system-tools:hover { opacity: 0.6; }
         .tool-btn { 
-            font-size: 9px; border: 1px solid rgba(255,255,255,0.2); 
-            padding: 5px 12px; border-radius: 20px; cursor: pointer;
-            letter-spacing: 0.1em; text-transform: uppercase; transition: 0.3s;
+            font-size: 10px; border: 1px solid rgba(255,255,255,0.2); 
+            padding: 6px 16px; border-radius: 30px; cursor: pointer;
+            letter-spacing: 0.2em; text-transform: uppercase; transition: 0.3s;
         }
-        .tool-btn:hover { background: rgba(59, 130, 246, 0.2); border-color: #3b82f6; }
+        .tool-btn:hover { background: rgba(255,255,255,0.1); border-color: #fff; }
 
-        #scroll-wrapper { position: fixed; inset: 0; z-index: 10; overflow-x: auto; display: flex; align-items: center; padding: 0 10vw; scrollbar-width: none; transition: opacity 0.8s; }
+        #scroll-wrapper { 
+            position: fixed; inset: 0; z-index: 10; 
+            overflow-x: auto; display: flex; align-items: center;
+            padding: 0 10vw; scrollbar-width: none; 
+            transition: opacity 0.8s ease;
+        }
+
         #gallery-tracks { display: flex; align-items: center; position: relative; padding-bottom: 150px; }
         
         #timeline-container { position: absolute; bottom: 80px; left: 0; height: 40px; display: flex; align-items: center; pointer-events: none; }
-        #timeline-line { position: absolute; top: 20px; height: 1px; background: rgba(255,255,255,0.1); width: 50000px; }
+        #timeline-line { position: absolute; top: 20px; height: 1px; background: rgba(255,255,255,0.1); width: 50000px; transition: 0.5s; }
         .time-mark { position: absolute; display: flex; flex-direction: column; align-items: center; transform: translateX(-50%); }
-        .time-node { width: 6px; height: 6px; background: #3b82f6; border-radius: 50%; box-shadow: 0 0 10px #3b82f6; }
-        .time-label { color: rgba(255,255,255,0.3); font-size: 11px; margin-top: 10px; font-family: monospace; }
+        .time-node { width: 6px; height: 6px; background: #3b82f6; border-radius: 50%; box-shadow: 0 0 10px #3b82f6; transition: 0.5s; }
+        .time-label { color: rgba(255,255,255,0.3); font-size: 12px; margin-top: 10px; font-family: monospace; }
 
         .memory-card { flex: 0 0 320px; height: 460px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); margin-right: 100px; border-radius: 24px; overflow: hidden; backdrop-filter: blur(20px); cursor: pointer; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .memory-card:hover { border-color: rgba(59, 130, 246, 0.5); transform: translateY(-15px); }
+        .memory-card:hover { border-color: rgba(59, 130, 246, 0.5); transform: translateY(-15px); background: rgba(255, 255, 255, 0.05); }
         .card-img { width: 100%; height: 240px; background-size: cover; background-position: center; opacity: 0.5; transition: 0.4s; }
         .memory-card:hover .card-img { opacity: 0.8; }
 
-        #music-toggle { position: fixed; bottom: 30px; right: 30px; z-index: 100; width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); display: none; align-items: center; justify-content: center; cursor: pointer; }
+        #music-toggle { position: fixed; bottom: 30px; right: 30px; z-index: 100; width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); display: none; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; backdrop-filter: blur(10px); }
         .music-bar { width: 3px; height: 15px; background: #3b82f6; margin: 0 2px; }
         .playing .music-bar { animation: bar-rise 1s infinite ease-in-out; }
-        @keyframes bar-rise { 0%, 100% { height: 6px; } 50% { height: 18px; } }
+        @keyframes bar-rise { 0%, 100% { height: 6px; } 50% { height: 20px; } }
 
-        #focus-panel { position: fixed; inset: 0; z-index: 15; display: none; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.92); }
-        .glass-panel { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(50px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 32px; width: 92%; max-width: 650px; padding: 40px; }
+        #focus-panel { position: fixed; inset: 0; z-index: 15; display: none; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.94); }
+        .glass-panel { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(50px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 32px; width: 95%; max-width: 650px; padding: 50px; }
         
-        #dialogue-container { max-height: 350px; overflow-y: auto; font-size: 15px; margin-bottom: 25px; }
-        .ai-msg { color: #93c5fd; margin-bottom: 24px; line-height: 1.7; }
-        .user-msg { color: rgba(255,255,255,0.4); text-align: right; margin-bottom: 24px; }
+        #dialogue-container { max-height: 380px; overflow-y: auto; font-size: 16px; margin-bottom: 30px; scroll-behavior: smooth; }
+        .ai-msg { color: #93c5fd; margin-bottom: 28px; line-height: 1.8; letter-spacing: 0.02em; }
+        .user-msg { color: rgba(255,255,255,0.4); text-align: right; margin-bottom: 28px; }
         
-        .analysis-note { color: #dc2626; font-size: 11px; margin-bottom: 12px; font-family: monospace; background: rgba(220, 38, 38, 0.08); padding: 8px 12px; border-left: 3px solid #dc2626; animation: glitch-blink 0.5s infinite alternate; }
-        @keyframes glitch-blink { from { opacity: 0.5; } to { opacity: 1; } }
+        /* 发送按钮样式 */
+        .send-trigger {
+            width: 44px; height: 44px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2);
+            color: #3b82f6; cursor: pointer; transition: 0.3s;
+        }
+        .send-trigger:hover { background: #3b82f6; color: white; transform: scale(1.05); }
 
-        #user-input { background: transparent; width: 100%; outline: none; border-bottom: 1px solid rgba(255,255,255,0.1); padding: 8px 0; }
-        .glitched #timeline-line { background: rgba(220, 38, 38, 0.2); }
-        .glitched .time-node { background: #dc2626; box-shadow: 0 0 10px #dc2626; }
+        .analysis-note { color: #dc2626; font-size: 12px; margin: 10px 0 18px 0; background: rgba(220, 38, 38, 0.05); padding: 8px 12px; border-left: 2px solid #dc2626; animation: glitch-blink 0.5s infinite alternate; }
+        @keyframes glitch-blink { from { opacity: 0.4; } to { opacity: 1; } }
+
+        #concept-overlay { position: fixed; inset: 0; z-index: 200; background: #010103; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .concept-card { background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 40px; padding: 80px 60px; max-width: 800px; width: 90%; text-align: center; }
     </style>
 </head>
 <body>
     <audio id="bg-music" loop><source src="/templates/Moonloops.MP3" type="audio/mpeg"></audio>
     
     <div class="system-tools">
-        <div class="tool-btn" onclick="generateShareLink()">Share Link</div>
-        <div class="tool-btn" onclick="if(confirm('重置将清空所有记忆，确定吗？')) {localStorage.clear(); window.location.href=window.location.origin+window.location.pathname;}">Reset</div>
+        <div class="tool-btn" onclick="generateShareLink()">Share Garden</div>
+        <div class="tool-btn" onclick="if(confirm('重置将清空所有记忆，确定吗？')) {localStorage.clear(); location.reload();}">Reset</div>
     </div>
 
     <div id="music-toggle" onclick="toggleMusic()"><div class="music-bar"></div><div class="music-bar"></div><div class="music-bar"></div></div>
+    
+    <div id="concept-overlay">
+        <div class="concept-card">
+            <div class="text-[10px] tracking-[0.8em] text-blue-500 uppercase mb-8">C O N C E P T</div>
+            <h1 class="text-5xl font-light tracking-widest mb-12">算法能否触碰灵魂？</h1>
+            <p class="text-white/40 leading-relaxed mb-6">在这个项目中，“爱”被重新解构为一种 <span class="text-blue-400">数据的共享与共振</span>。</p>
+            <p class="text-white/40 leading-relaxed mb-20">当AI开始理解你的影像色彩，当它试图用诗意去填充那些冰冷的二进制切片，我们在探讨：建立在算法之上的亲密关系，是否拥有被承认的温度？</p>
+            <button onclick="activateShowcase()" class="border border-white/20 px-16 py-4 rounded-full text-[11px] tracking-[0.6em] hover:bg-white/5 transition uppercase text-white/60">SYNC & START</button>
+        </div>
+    </div>
+
+    <div id="setup-overlay" class="fixed inset-0 z-[150] bg-[#010103] flex items-center justify-center" style="display: none;">
+        <div class="glass-panel text-center">
+            <h2 class="text-xs tracking-[0.5em] mb-10 text-white/30 uppercase">请为你的对话者取个名字</h2>
+            <input type="text" id="ai-name-input" class="bg-transparent border-b border-white/10 w-full text-center py-4 outline-none mb-16 text-3xl font-light" placeholder="例如：Elysia">
+            <button onclick="startGarden()" class="border border-white/10 px-20 py-4 rounded-full text-xs tracking-[0.4em] hover:bg-white/5 transition uppercase">唤醒花园</button>
+        </div>
+    </div>
+
     <div id="container"></div>
 
     <div id="scroll-wrapper" style="opacity: 0;">
         <div id="gallery-tracks"><div id="timeline-container"><div id="timeline-line"></div></div></div>
     </div>
 
-    <div id="setup-overlay" class="fixed inset-0 z-50 bg-[#010103] flex items-center justify-center">
-        <div class="glass-panel text-center">
-            <h2 class="text-[10px] tracking-[0.5em] mb-10 text-white/20 uppercase">请为你的对话者取个名字</h2>
-            <input type="text" id="ai-name-input" class="bg-transparent border-b border-white/10 w-full text-center py-4 outline-none mb-16 text-3xl font-light" placeholder="Elysia">
-            <button onclick="startGarden()" class="border border-white/10 px-20 py-4 rounded-full text-[10px] tracking-[0.4em] hover:bg-white/5 transition uppercase">初始化连接</button>
-        </div>
-    </div>
-
-    <div id="sync-overlay" class="fixed inset-0 z-[100] bg-[#010103] flex items-center justify-center cursor-pointer" style="display: none;">
-        <div class="text-center">
-            <div class="text-[10px] tracking-[0.8em] text-white/20 uppercase mb-4">Frequency Detected</div>
-            <div class="text-[11px] tracking-[0.4em] text-blue-500 uppercase animate-pulse">点击以同步频率 / SYNC FREQUENCY</div>
-        </div>
-    </div>
-
     <div id="focus-panel">
         <div class="glass-panel">
             <div id="dialogue-container"></div>
-            <div id="input-area" class="flex flex-col gap-4 border-t border-white/5 pt-6">
-                <input type="text" id="user-input" placeholder="输入讯息..." autocomplete="off">
-                <div class="flex justify-between items-center mt-4">
-                    <button onclick="exitFocusMode()" class="text-[9px] text-white/20 tracking-[0.2em] uppercase">Return</button>
-                    <div class="flex gap-4">
-                        <button id="archive-btn" onclick="finalizeMemory()" class="bg-blue-600/10 border border-blue-500/30 text-blue-400 px-8 py-2 rounded-full text-[9px] tracking-widest uppercase hover:bg-blue-600/20 transition">Archive</button>
-                        <button onclick="handleSend()" class="text-white/40 hover:text-white text-[9px] uppercase tracking-widest">Send</button>
-                    </div>
+            <div id="input-area" class="flex gap-6 items-center border-t border-white/5 pt-8">
+                <input type="text" id="user-input" class="bg-transparent flex-1 outline-none text-white/80" placeholder="描述这片碎片..." autocomplete="off">
+                <div class="send-trigger" onclick="handleSend()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
                 </div>
+            </div>
+            <div class="mt-12 flex justify-between items-center">
+                <button onclick="exitFocusMode()" class="text-[10px] text-white/20 tracking-widest uppercase">返回</button>
+                <button id="archive-btn" onclick="finalizeMemory()" class="bg-blue-600/10 border border-blue-500/30 text-blue-400 px-10 py-3 rounded-full text-[10px] tracking-widest uppercase hover:bg-blue-600/20 transition">保存这段记忆</button>
             </div>
         </div>
     </div>
 
     <div class="fixed bottom-16 w-full flex justify-center z-20">
         <label id="upload-btn" class="cursor-pointer bg-white/5 border border-white/10 px-16 py-5 rounded-full text-[10px] tracking-[0.4em] text-white/30 hover:text-white hover:bg-white/10 transition hidden">
-            UPLOAD_NEW_FRAGMENT <input type="file" id="img-upload" class="hidden" accept="image/*">
+            开启新的记忆切片 <input type="file" id="img-upload" class="hidden" accept="image/*">
         </label>
     </div>
 
     <script>
+        // 核心代码逻辑保持同步，仅更新了部分 UI 渲染部分的交互映射
         let scene, camera, renderer, points, currentImg, currentHistory = [], aiName = "Elysia", lastAiTitle = "";
         let memoryCount = 0, savedCards = [], isMusicPlaying = false;
 
         window.onload = () => {
             const urlParams = new URLSearchParams(window.location.search);
-            const sharedBase64 = urlParams.get('data');
-
-            if (sharedBase64) {
-                try {
-                    const decoded = JSON.parse(decodeURIComponent(escape(atob(sharedBase64))));
-                    showSyncOverlay(decoded);
-                } catch (e) {
-                    loadLocal();
-                }
+            const sharedData = urlParams.get('data');
+            const localData = localStorage.getItem('phantom_garden_save');
+            if (sharedData || localData) {
+                document.getElementById('concept-overlay').style.display = 'flex';
             } else {
-                loadLocal();
+                document.getElementById('concept-overlay').style.display = 'none';
+                document.getElementById('setup-overlay').style.display = 'flex';
             }
         };
 
-        function loadLocal() {
-            const local = localStorage.getItem('phantom_garden_save');
-            if(local) applyGardenState(JSON.parse(local));
-        }
-
-        // 显示频率同步界面，解决音乐播放限制
-        function showSyncOverlay(data) {
-            document.getElementById('setup-overlay').style.display = 'none';
-            const overlay = document.getElementById('sync-overlay');
-            overlay.style.display = 'flex';
-            overlay.onclick = () => {
-                const m = document.getElementById('bg-music');
-                m.volume = 0.3;
-                m.play().catch(e => console.log("Music blocked"));
-                isMusicPlaying = true;
-                document.getElementById('music-toggle').classList.add('playing');
-                overlay.style.display = 'none';
-                applyGardenState(data);
-            };
-        }
-
-        function applyGardenState(data) {
-            aiName = data.aiName || "Elysia";
-            memoryCount = data.memoryCount || 0;
-            savedCards = data.cards || [];
-            if(data.hasStarted) {
-                document.getElementById('setup-overlay').style.display = 'none';
-                document.getElementById('upload-btn').classList.remove('hidden');
-                document.getElementById('music-toggle').style.display = 'flex';
+        function activateShowcase() {
+            const music = document.getElementById('bg-music');
+            music.volume = 0.3;
+            music.play().catch(() => {});
+            isMusicPlaying = true;
+            document.getElementById('music-toggle').classList.add('playing');
+            document.getElementById('music-toggle').style.display = 'flex';
+            document.getElementById('concept-overlay').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('concept-overlay').style.display = 'none';
                 document.getElementById('scroll-wrapper').style.opacity = '1';
-                initThree();
-                savedCards.forEach(c => renderCard(c));
-                if(memoryCount >= 10) document.body.classList.add('glitched');
-            }
-        }
-
-        function generateShareLink() {
-            try {
-                const dataStr = JSON.stringify({ aiName, memoryCount, cards: savedCards, hasStarted: true });
-                const encoded = btoa(unescape(encodeURIComponent(dataStr)));
-                const shareUrl = window.location.origin + window.location.pathname + '?data=' + encoded;
-                navigator.clipboard.writeText(shareUrl).then(() => alert("展示链接已复制到剪贴板。"));
-            } catch (e) { alert("记忆量过大，请使用 Export 导出文件。"); }
+                const urlParams = new URLSearchParams(window.location.search);
+                const sharedBase64 = urlParams.get('data');
+                const data = sharedBase64 ? 
+                    JSON.parse(decodeURIComponent(escape(atob(sharedBase64)))) : 
+                    JSON.parse(localStorage.getItem('phantom_garden_save'));
+                applyState(data);
+            }, 800);
         }
 
         function startGarden() {
             const n = document.getElementById('ai-name-input').value.trim();
             if(n) aiName = n;
-            const m = document.getElementById('bg-music');
-            m.volume = 0.3; m.play(); isMusicPlaying = true;
+            const music = document.getElementById('bg-music');
+            music.volume = 0.3; music.play();
+            isMusicPlaying = true;
             document.getElementById('music-toggle').classList.add('playing');
-            localStorage.setItem('phantom_garden_save', JSON.stringify({ aiName, memoryCount: 0, cards: [], hasStarted: true }));
-            location.reload();
+            document.getElementById('setup-overlay').style.display = 'none';
+            applyState({ aiName, memoryCount: 0, cards: [], hasStarted: true });
+        }
+
+        function applyState(data) {
+            aiName = data.aiName || "Elysia";
+            memoryCount = data.memoryCount || 0;
+            savedCards = data.cards || [];
+            document.getElementById('upload-btn').classList.remove('hidden');
+            document.getElementById('scroll-wrapper').style.opacity = '1';
+            initThree();
+            savedCards.forEach(c => renderCard(c));
+            if(memoryCount >= 10) document.getElementById('timeline-line').style.background = 'rgba(220, 38, 38, 0.2)';
+            saveLocal();
+        }
+
+        function saveLocal() { localStorage.setItem('phantom_garden_save', JSON.stringify({ aiName, memoryCount, cards: savedCards, hasStarted: true })); }
+        function generateShareLink() {
+            const dataStr = JSON.stringify({ aiName, memoryCount, cards: savedCards, hasStarted: true });
+            const encoded = btoa(unescape(encodeURIComponent(dataStr)));
+            navigator.clipboard.writeText(window.location.origin + window.location.pathname + '?data=' + encoded).then(() => alert("分享链接已复制。"));
         }
 
         function initThree() {
@@ -188,16 +201,11 @@
             camera.position.z = 160;
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             document.getElementById('container').appendChild(renderer.domElement);
             animate();
         }
 
-        function animate() {
-            requestAnimationFrame(animate);
-            if(points) points.rotation.y += 0.0006;
-            renderer.render(scene, camera);
-        }
+        function animate() { requestAnimationFrame(animate); if(points) points.rotation.y += 0.0006; renderer.render(scene, camera); }
 
         function setupParticles(imgSrc) {
             const img = new Image();
@@ -211,7 +219,7 @@
                 const geo = new THREE.BufferGeometry(), pos = [], cols = [];
                 for(let i=0; i<10000; i++) {
                     const x = (i%100 - 50), y = (50 - Math.floor(i/100));
-                    pos.push(x*2.2, y*2.2, (d[i*4]/255)*12);
+                    pos.push(x*2.2, y*2.2, (d[i*4]/255)*10);
                     cols.push(d[i*4]/255, d[i*4+1]/255, d[i*4+2]/255);
                 }
                 geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -229,6 +237,7 @@
                 currentHistory = [];
                 setupParticles(currentImg);
                 enterFocusMode(true);
+                document.getElementById('dialogue-container').innerHTML = `<p class="text-center text-white/10 text-[10px] mb-10 tracking-widest uppercase">Syncing Fragment...</p>`;
             };
             reader.readAsDataURL(e.target.files[0]);
         };
@@ -237,8 +246,7 @@
             const input = document.getElementById('user-input');
             const text = input.value.trim();
             if(!text) return;
-            const container = document.getElementById('dialogue-container');
-            container.innerHTML += `<div class="user-msg">${text}</div>`;
+            document.getElementById('dialogue-container').innerHTML += `<div class="user-msg">${text}</div>`;
             input.value = '';
             try {
                 const res = await fetch('/chat', {
@@ -249,42 +257,38 @@
                 const data = await res.json();
                 lastAiTitle = data.title;
                 let html = `<div class="mb-8">`;
-                if(data.logic_raw) {
-                    html += `<div class="analysis-note">>>> LOG: ${data.logic_raw}</div>`;
-                    document.body.classList.add('glitched');
-                }
+                if(data.logic_raw) html += `<div class="analysis-note">>>> LOG: ${data.logic_raw}</div>`;
                 html += `<div class="ai-msg">${aiName}: ${data.reply}</div></div>`;
-                container.innerHTML += html;
+                document.getElementById('dialogue-container').innerHTML += html;
                 currentHistory.push({role: "user", content: text}, {role: "assistant", content: data.reply});
-                container.scrollTop = container.scrollHeight;
+                document.getElementById('dialogue-container').scrollTop = 9999;
             } catch (e) {}
         }
 
         function finalizeMemory() {
-            const title = prompt("记忆命名", lastAiTitle || "碎裂的瞬间");
+            const title = prompt("命名这段记忆", lastAiTitle || "碎裂的瞬间");
             if(!title) return;
             const cardData = { img: currentImg, title, history: [...currentHistory], index: memoryCount, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) };
             savedCards.push(cardData);
             renderCard(cardData);
             memoryCount++;
-            localStorage.setItem('phantom_garden_save', JSON.stringify({ aiName, memoryCount, cards: savedCards, hasStarted: true }));
+            saveLocal();
             exitFocusMode();
         }
 
         function renderCard(data) {
-            const track = document.getElementById('gallery-tracks');
             const card = document.createElement('div');
             card.className = "memory-card";
-            card.innerHTML = `<div class="card-img" style="background-image:url(${data.img})"></div><div class="p-8"><div class="text-blue-400 font-bold mb-2 tracking-widest text-sm">${data.title}</div><div class="text-white/20 text-[9px]">FRAG_${data.index}</div></div>`;
+            card.innerHTML = `<div class="card-img" style="background-image:url(${data.img})"></div><div class="p-8"><div class="text-blue-400 font-bold mb-2 tracking-widest text-sm">${data.title}</div><div class="text-white/20 text-[9px]">ID: FRAG_${data.index}</div></div>`;
             card.onclick = () => {
                 setupParticles(data.img);
                 document.getElementById('dialogue-container').innerHTML = data.history.map(m => `<div class="${m.role==='user'?'user-msg':'ai-msg'}">${m.role==='user'?'':aiName+': '}${m.content}</div>`).join('');
                 enterFocusMode(false);
             };
-            track.appendChild(card);
+            document.getElementById('gallery-tracks').appendChild(card);
             const mark = document.createElement('div');
             mark.className = "time-mark";
-            mark.style.left = (track.querySelectorAll('.memory-card').length - 1) * 420 + 260 + "px";
+            mark.style.left = (document.querySelectorAll('.memory-card').length - 1) * 420 + 260 + "px";
             mark.innerHTML = `<div class="time-node"></div><div class="time-label">${data.time}</div>`;
             document.getElementById('timeline-container').appendChild(mark);
         }
