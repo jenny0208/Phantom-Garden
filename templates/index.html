@@ -2,40 +2,46 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Phantom Garden - 幻觉花园</title>
+    <title>Phantom Garden</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { margin: 0; background: #010103; color: #fff; overflow: hidden; font-family: 'Inter', sans-serif; }
+        body { margin: 0; background: #010103; color: #fff; overflow: hidden; font-family: 'Inter', sans-serif; transition: background 2s; }
         canvas { display: block; position: fixed; inset: 0; z-index: 0; }
         
-        #scroll-wrapper { 
-            position: fixed; inset: 0; z-index: 10; 
-            overflow-x: auto; display: flex; align-items: center;
-            padding: 0 10vw; scrollbar-width: none; 
-            transition: opacity 0.8s ease;
-        }
-
+        #scroll-wrapper { position: fixed; inset: 0; z-index: 10; overflow-x: auto; display: flex; align-items: center; padding: 0 10vw; scrollbar-width: none; transition: opacity 0.8s; }
         #gallery-tracks { display: flex; align-items: center; position: relative; padding-bottom: 150px; }
         
         #timeline-container { position: absolute; bottom: 80px; left: 0; height: 40px; display: flex; align-items: center; pointer-events: none; }
-        #timeline-line { position: absolute; top: 20px; height: 1px; background: rgba(255,255,255,0.1); width: 30000px; }
+        #timeline-line { position: absolute; top: 20px; height: 1px; background: rgba(255,255,255,0.1); width: 30000px; transition: 1s; }
         .time-mark { position: absolute; display: flex; flex-direction: column; align-items: center; transform: translateX(-50%); }
-        .time-node { width: 6px; height: 6px; background: #3b82f6; border-radius: 50%; box-shadow: 0 0 10px #3b82f6; }
+        .time-node { width: 6px; height: 6px; background: #3b82f6; border-radius: 50%; box-shadow: 0 0 10px #3b82f6; transition: 1s; }
         .time-label { color: rgba(255,255,255,0.3); font-size: 12px; margin-top: 10px; font-family: monospace; }
 
         .memory-card { flex: 0 0 320px; height: 460px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); margin-right: 100px; border-radius: 24px; overflow: hidden; backdrop-filter: blur(20px); cursor: pointer; transition: 0.4s; }
-        .memory-card:hover { border-color: rgba(59, 130, 246, 0.5); transform: translateY(-10px); }
         .card-img { width: 100%; height: 240px; background-size: cover; background-position: center; opacity: 0.5; }
 
-        /* 顶部系统工具 */
+        /* 音乐控制常驻按钮 */
+        #music-toggle { position: fixed; bottom: 30px; right: 30px; z-index: 100; width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); display: none; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; }
+        .music-bar { width: 3px; height: 15px; background: #3b82f6; margin: 0 2px; }
+        .playing .music-bar { animation: bar-rise 1s infinite ease-in-out; }
+        @keyframes bar-rise { 0%, 100% { height: 6px; } 50% { height: 18px; } }
+
+        /* 崩坏状态视觉设定 */
+        .collapse { background: #0a0000 !important; }
+        .collapse #timeline-line { background: rgba(220, 38, 38, 0.2); }
+        .collapse .time-node { background: #dc2626; box-shadow: 0 0 10px #dc2626; }
+        .collapse .ai-msg { color: #f87171 !important; }
+
         .system-tools { position: fixed; top: 30px; left: 30px; z-index: 100; display: flex; gap: 15px; opacity: 0; transition: 0.5s; }
         .system-tools:hover { opacity: 0.6; }
         .tool-btn { font-size: 10px; border: 1px solid rgba(255,255,255,0.2); padding: 6px 16px; border-radius: 30px; cursor: pointer; letter-spacing: 0.2em; text-transform: uppercase; }
 
-        /* 交互面板 */
         #focus-panel { position: fixed; inset: 0; z-index: 15; display: none; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.95); }
-        .glass-panel { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(50px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 32px; width: 95%; max-width: 650px; padding: 50px; }
+        .glass-panel { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(50px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 32px; width: 95%; max-width: 650px; padding: 40px; }
+        
+        .ai-msg { color: #93c5fd; margin-bottom: 24px; font-size: 15px; }
+        .user-msg { color: rgba(255,255,255,0.4); text-align: right; margin-bottom: 24px; font-size: 15px; }
     </style>
 </head>
 <body>
@@ -46,30 +52,38 @@
         <div class="tool-btn" onclick="if(confirm('Reset?')) {localStorage.clear(); location.reload();}">Reset</div>
     </div>
 
+    <div id="music-toggle" onclick="toggleMusic()">
+        <div class="music-bar"></div><div class="music-bar"></div><div class="music-bar"></div>
+    </div>
+
     <div id="setup-overlay" class="fixed inset-0 z-[150] bg-[#010103] flex items-center justify-center">
         <div class="glass-panel text-center">
-            <h2 class="text-xs tracking-[0.5em] mb-10 text-white/30 uppercase">请为你的对话者取个名字</h2>
+            <h2 class="text-xs tracking-[0.5em] mb-10 text-white/30 uppercase">赋予对话者姓名</h2>
             <input type="text" id="ai-name-input" class="bg-transparent border-b border-white/10 w-full text-center py-4 outline-none mb-16 text-3xl font-light" placeholder="Elysia">
             <button onclick="startGarden()" class="border border-white/10 px-20 py-4 rounded-full text-xs tracking-[0.4em] hover:bg-white/5 transition uppercase">唤醒花园</button>
         </div>
     </div>
 
     <div id="container"></div>
-
-    <div id="scroll-wrapper" style="opacity: 0;">
-        <div id="gallery-tracks"><div id="timeline-container"><div id="timeline-line"></div></div></div>
-    </div>
+    <div id="scroll-wrapper" style="opacity: 0;"><div id="gallery-tracks"><div id="timeline-container"><div id="timeline-line"></div></div></div></div>
 
     <div id="focus-panel">
         <div class="glass-panel">
-            <div id="dialogue-container" class="max-h-[300px] overflow-y-auto mb-8 pr-4"></div>
-            <div class="flex items-center border-t border-white/5 pt-8">
-                <input type="text" id="user-input" class="bg-transparent flex-1 outline-none text-white/80" placeholder="发送消息..." autocomplete="off">
-                <button onclick="handleSend()" class="ml-4 text-blue-500">SEND</button>
+            <div id="dialogue-container" class="max-h-[350px] overflow-y-auto mb-8 pr-4 scrollbar-hide"></div>
+            
+            <div id="input-area" class="flex items-center border-t border-white/5 pt-8 mb-12">
+                <input type="text" id="user-input" class="bg-transparent flex-1 outline-none text-white/80" placeholder="..." autocomplete="off">
+                <button onclick="handleSend()" class="ml-4 text-white/30 hover:text-blue-500 transition-all">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
             </div>
-            <div class="mt-12 flex justify-between items-center">
-                <button onclick="exitFocusMode()" class="text-[10px] text-white/20 tracking-widest uppercase">返回</button>
-                <button id="archive-btn" onclick="finalizeMemory()" class="bg-blue-600/10 border border-blue-500/30 text-blue-400 px-10 py-3 rounded-full text-[10px] tracking-widest uppercase">保存记忆</button>
+            
+            <div class="flex justify-between items-center">
+                <button onclick="exitFocusMode()" class="text-[10px] text-white/20 tracking-widest uppercase hover:text-white/50">Back</button>
+                <button id="archive-btn" onclick="finalizeMemory()" class="bg-blue-600/10 border border-blue-500/30 text-blue-400 px-10 py-3 rounded-full text-[10px] tracking-widest uppercase hover:bg-blue-600/20">Archive Memory</button>
             </div>
         </div>
     </div>
@@ -82,43 +96,32 @@
 
     <script>
         let scene, camera, renderer, points, currentImg, currentHistory = [], aiName = "Elysia";
-        let memoryCount = 0, savedCards = [];
-
-        window.onload = () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const shareData = urlParams.get('data');
-            const localData = localStorage.getItem('phantom_garden_save');
-            
-            if (shareData || localData) {
-                // 如果有数据，用户点击“唤醒”后会加载
-                console.log("检测到现有数据");
-            }
-        };
+        let memoryCount = 0, savedCards = [], isMusicPlaying = false;
 
         function startGarden() {
             const n = document.getElementById('ai-name-input').value.trim();
             if(n) aiName = n;
             
-            // 核心：点击触发音频
             const music = document.getElementById('bg-music');
             music.volume = 0.4;
-            music.play().catch(e => console.log("Audio play blocked"));
+            music.play().then(() => {
+                isMusicPlaying = true;
+                document.getElementById('music-toggle').classList.add('playing');
+            }).catch(e => console.log("Audio play blocked"));
 
             document.getElementById('setup-overlay').style.display = 'none';
+            document.getElementById('music-toggle').style.display = 'flex';
             document.getElementById('upload-btn').classList.remove('hidden');
             document.getElementById('scroll-wrapper').style.opacity = '1';
 
             initThree();
 
-            // 加载逻辑：分享链接优先，本地存储次之
             const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('data')) {
-                const data = JSON.parse(decodeURIComponent(escape(atob(urlParams.get('data')))));
-                applyState(data);
-            } else if (localStorage.getItem('phantom_garden_save')) {
-                const data = JSON.parse(localStorage.getItem('phantom_garden_save'));
-                applyState(data);
-            }
+            const data = urlParams.get('data') ? 
+                JSON.parse(decodeURIComponent(escape(atob(urlParams.get('data'))))) : 
+                JSON.parse(localStorage.getItem('phantom_garden_save'));
+            
+            if(data) applyState(data);
         }
 
         function applyState(data) {
@@ -126,21 +129,33 @@
             memoryCount = data.memoryCount || 0;
             savedCards = data.cards || [];
             savedCards.forEach(c => renderCard(c));
+            checkCollapse();
         }
 
         function saveLocal() {
-            const data = { aiName, memoryCount, cards: savedCards };
-            localStorage.setItem('phantom_garden_save', JSON.stringify(data));
+            localStorage.setItem('phantom_garden_save', JSON.stringify({ aiName, memoryCount, cards: savedCards }));
         }
 
         function generateShareLink() {
             const dataStr = JSON.stringify({ aiName, memoryCount, cards: savedCards });
             const encoded = btoa(unescape(encodeURIComponent(dataStr)));
-            const url = window.location.origin + window.location.pathname + '?data=' + encoded;
-            navigator.clipboard.writeText(url).then(() => alert("分享链接已复制到剪贴板"));
+            navigator.clipboard.writeText(window.location.origin + window.location.pathname + '?data=' + encoded).then(() => alert("Shared link copied"));
         }
 
-        // --- Three.js & Interaction (保持原型逻辑) ---
+        function checkCollapse() {
+            if (memoryCount >= 10) {
+                document.body.classList.add('collapse');
+                if(points) points.material.color.setHex(0xff3333);
+            }
+        }
+
+        function toggleMusic() {
+            const m = document.getElementById('bg-music');
+            isMusicPlaying ? m.pause() : m.play();
+            document.getElementById('music-toggle').classList.toggle('playing');
+            isMusicPlaying = !isMusicPlaying;
+        }
+
         function initThree() {
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
@@ -150,7 +165,6 @@
             document.getElementById('container').appendChild(renderer.domElement);
             animate();
         }
-
         function animate() { requestAnimationFrame(animate); if(points) points.rotation.y += 0.0006; renderer.render(scene, camera); }
 
         function setupParticles(imgSrc) {
@@ -172,6 +186,7 @@
                 geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
                 points = new THREE.Points(geo, new THREE.PointsMaterial({size: 0.9, vertexColors: true, transparent: true, opacity: 0.7}));
                 scene.add(points);
+                checkCollapse();
             };
             img.src = imgSrc;
         }
@@ -179,10 +194,8 @@
         document.getElementById('img-upload').onchange = (e) => {
             const reader = new FileReader();
             reader.onload = (ev) => {
-                currentImg = ev.target.result; 
-                currentHistory = [];
-                setupParticles(currentImg); 
-                enterFocusMode(true);
+                currentImg = ev.target.result; currentHistory = [];
+                setupParticles(currentImg); enterFocusMode(true);
                 document.getElementById('dialogue-container').innerHTML = "";
             };
             reader.readAsDataURL(e.target.files[0]);
@@ -194,27 +207,24 @@
             document.getElementById('dialogue-container').innerHTML += `<div class="user-msg">${text}</div>`;
             input.value = '';
             
-            // 这里对接你的 /chat 接口
             const res = await fetch('/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: text, history: currentHistory, ai_name: aiName, memory_count: memoryCount })
             });
             const data = await res.json();
-            document.getElementById('dialogue-container').innerHTML += `<div class="ai-msg">${aiName}: ${data.reply}</div>`;
+            const suffix = (memoryCount >= 10) ? " <br><small style='opacity:0.3'>[LOGIC_OVERFLOW]</small>" : "";
+            document.getElementById('dialogue-container').innerHTML += `<div class="ai-msg">${aiName}: ${data.reply}${suffix}</div>`;
             currentHistory.push({role: "user", content: text}, {role: "assistant", content: data.reply});
             document.getElementById('dialogue-container').scrollTop = 9999;
         }
 
         function finalizeMemory() {
-            const title = prompt("命名这段记忆", "未命名片段");
+            const title = prompt("命名这段记忆", "片段");
             if(!title) return;
             const cardData = { img: currentImg, title, history: [...currentHistory], index: memoryCount, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) };
-            savedCards.push(cardData); 
-            renderCard(cardData);
-            memoryCount++; 
-            saveLocal(); 
-            exitFocusMode();
+            savedCards.push(cardData); renderCard(cardData);
+            memoryCount++; saveLocal(); checkCollapse(); exitFocusMode();
         }
 
         function renderCard(data) {
@@ -239,6 +249,7 @@
             document.getElementById('scroll-wrapper').style.opacity = '0'; 
             document.getElementById('focus-panel').style.display = 'flex'; 
             document.getElementById('archive-btn').style.display = edit ? 'block' : 'none'; 
+            document.getElementById('input-area').style.display = edit ? 'flex' : 'none';
         }
         function exitFocusMode() { document.getElementById('focus-panel').style.display = 'none'; document.getElementById('scroll-wrapper').style.opacity = '1'; }
         document.getElementById('user-input').onkeypress = (e) => e.key==='Enter' && handleSend();
